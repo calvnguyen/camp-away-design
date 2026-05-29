@@ -1,0 +1,1 @@
+{"root":["./src/app.test.tsx","./src/app.tsx","./src/main.tsx","./src/setuptests.ts","./src/vite-env.d.ts","./src/data/fixtures.ts","./src/data/inmemoryprojectrepository.test.ts","./src/data/inmemoryprojectrepository.ts","./src/data/index.ts","./src/data/types.ts","./src/lib/constraints.test.ts","./src/lib/constraints.ts","./src/types/index.ts"],"version":"5.7.3"}
