@@ -7,7 +7,9 @@ import type {
   BuildOrder,
   Builder,
   RentalRequest,
+  Reservation,
   Trailer,
+  TrailerDesign,
   TrailerSpec,
 } from '../types';
 
@@ -17,6 +19,28 @@ export interface CreateRentalRequestInput {
   startDate: string;
   endDate: string;
   notes: string;
+}
+
+export interface SaveDesignInput {
+  clientName: string;
+  spec: TrailerSpec;
+  notes: string;
+}
+
+export interface ReserveBuildInput {
+  clientName: string;
+  spec: TrailerSpec;
+  notes: string;
+  /** Reuse an already-saved design instead of saving a new one. */
+  designId?: string;
+}
+
+/** What `reserveBuild` returns: the saved design, the renter's reservation, and
+ *  the commissioned build that will fulfil it. */
+export interface ReserveBuildResult {
+  design: TrailerDesign;
+  reservation: Reservation;
+  buildOrder: BuildOrder;
 }
 
 export interface RentalRepository {
@@ -36,13 +60,32 @@ export interface RentalRepository {
   /** Renter confirms an available unit: marks the unit rented and the request confirmed. */
   confirmRental(requestId: string, trailerId: string): Promise<RentalRequest>;
 
-  // --- Builds (decoupled fleet growth) ---
+  // --- Saved designs ---
+  listDesigns(): Promise<TrailerDesign[]>;
+  /** Persist a design so the renter can reopen, refine, re-submit, or reserve a build of it. */
+  saveDesign(input: SaveDesignInput): Promise<TrailerDesign>;
+
+  // --- Reservations (renter claims the first rental of a build their design triggered) ---
+  listReservations(): Promise<Reservation[]>;
+  /**
+   * For a no-match design: saves the design (or reuses `designId`), creates a
+   * pending Reservation tied to the renter + design, and commissions a
+   * BuildOrder linked to that reservation (builder unassigned — ops assigns it).
+   */
+  reserveBuild(input: ReserveBuildInput): Promise<ReserveBuildResult>;
+  /** Renter rents the unit held for a 'ready' reservation: unit → rented, reservation → fulfilled. */
+  fulfillReservation(reservationId: string): Promise<Reservation>;
+
+  // --- Builds (fleet growth + reservation fulfilment) ---
   listBuildOrders(): Promise<BuildOrder[]>;
   commissionBuild(spec: TrailerSpec, builderId: string): Promise<BuildOrder>;
+  /** Assign (or reassign) a builder to a build — used for reservation builds that start unassigned. */
+  assignBuilder(buildOrderId: string, builderId: string): Promise<BuildOrder>;
   /**
    * Advances a build commissioned → in_progress → completed. On completion a
-   * new AVAILABLE trailer with that spec is added to the fleet — it is not
-   * assigned to any past requester.
+   * new trailer with that spec is added to the fleet: held 'reserved' for the
+   * reserving renter if the build has a `reservationId`, otherwise 'available'
+   * to whoever matches next.
    */
   advanceBuild(buildOrderId: string): Promise<BuildOrder>;
 

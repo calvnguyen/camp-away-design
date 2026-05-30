@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { rentalRepository } from '../../data';
-import type { BuildOrder, Builder, RentalRequest, Trailer } from '../../types';
+import type {
+  BuildOrder,
+  Builder,
+  RentalRequest,
+  Reservation,
+  Trailer,
+} from '../../types';
 import {
   Button,
   Card,
   StatusBadge,
   buildStatusDisplay,
   requestStatusDisplay,
+  reservationStatusDisplay,
   trailerStatusDisplay,
 } from '../../components';
 import {
@@ -23,6 +30,8 @@ function metricCards(m: FleetMetrics): { value: string; label: string }[] {
     { value: `${m.fulfilledPct}%`, label: 'Requests fulfilled' },
     { value: `${m.available}`, label: 'Available now' },
     { value: `${m.unfulfilled}`, label: 'Unmet requests' },
+    { value: `${m.reserved}`, label: 'Held for reservations' },
+    { value: `${m.pendingReservations}`, label: 'Reservations pending' },
     { value: `${m.fleetSize}`, label: 'Fleet size' },
   ];
 }
@@ -32,26 +41,38 @@ interface State {
   requests: RentalRequest[];
   buildOrders: BuildOrder[];
   builders: Builder[];
+  reservations: Reservation[];
 }
 
 export function FleetDashboard() {
   const [state, setState] = useState<State | null>(null);
 
   const load = useCallback(async (): Promise<State> => {
-    const [trailers, requests, buildOrders, builders] = await Promise.all([
+    const [trailers, requests, buildOrders, builders, reservations] = await Promise.all([
       rentalRepository.listTrailers(),
       rentalRepository.listRequests(),
       rentalRepository.listBuildOrders(),
       rentalRepository.listBuilders(),
+      rentalRepository.listReservations(),
     ]);
-    return { trailers, requests, buildOrders, builders };
+    return { trailers, requests, buildOrders, builders, reservations };
   }, []);
 
   useEffect(() => {
     let active = true;
     load()
       .then((s) => active && setState(s))
-      .catch(() => active && setState({ trailers: [], requests: [], buildOrders: [], builders: [] }));
+      .catch(
+        () =>
+          active &&
+          setState({
+            trailers: [],
+            requests: [],
+            buildOrders: [],
+            builders: [],
+            reservations: [],
+          }),
+      );
     return () => {
       active = false;
     };
@@ -59,8 +80,8 @@ export function FleetDashboard() {
 
   if (state === null) return <p className={styles.muted}>Loading fleet dashboard…</p>;
 
-  const { trailers, requests, buildOrders, builders } = state;
-  const metrics = computeFleetMetrics(trailers, requests);
+  const { trailers, requests, buildOrders, builders, reservations } = state;
+  const metrics = computeFleetMetrics(trailers, requests, reservations);
   const builderLoads = computeBuilderLoads(buildOrders, builders);
   const maxLoad = Math.max(1, ...builderLoads.map((l) => l.activeBuilds));
   const builderName = (id: string | null) =>
@@ -70,6 +91,12 @@ export function FleetDashboard() {
 
   async function advance(buildId: string) {
     await rentalRepository.advanceBuild(buildId);
+    setState(await load());
+  }
+
+  async function assignBuilder(buildId: string, builderId: string) {
+    if (!builderId) return;
+    await rentalRepository.assignBuilder(buildId, builderId);
     setState(await load());
   }
 
@@ -152,6 +179,40 @@ export function FleetDashboard() {
         </Card>
       </section>
 
+      <section aria-labelledby="reservations-heading" className={styles.section}>
+        <h2 id="reservations-heading" className={styles.sectionTitle}>Build reservations</h2>
+        <Card>
+          {reservations.length === 0 ? (
+            <p className={styles.muted}>No build reservations yet.</p>
+          ) : (
+            <table className={styles.table}>
+              <caption className={styles.visuallyHidden}>Renter build reservations</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Renter</th>
+                  <th scope="col">Reserved spec</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Held unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservations.map((r) => {
+                  const d = reservationStatusDisplay[r.status];
+                  return (
+                    <tr key={r.id}>
+                      <td>{r.clientName}</td>
+                      <td>{specSummary(r.spec)}</td>
+                      <td><StatusBadge tone={d.tone}>{d.label}</StatusBadge></td>
+                      <td>{trailerName(r.heldTrailerId)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </section>
+
       <section aria-labelledby="builds-heading" className={styles.section}>
         <h2 id="builds-heading" className={styles.sectionTitle}>Commissioned builds</h2>
         <Card>
@@ -160,6 +221,7 @@ export function FleetDashboard() {
             <thead>
               <tr>
                 <th scope="col">Spec</th>
+                <th scope="col">For</th>
                 <th scope="col">Builder</th>
                 <th scope="col">Status</th>
                 <th scope="col">Action</th>
@@ -168,18 +230,60 @@ export function FleetDashboard() {
             <tbody>
               {buildOrders.map((b) => {
                 const d = buildStatusDisplay[b.status];
+                const unassigned = b.builderId === null;
+                const canAssign = unassigned && b.status !== 'completed';
                 return (
                   <tr key={b.id}>
                     <td>{specSummary(b.spec)}</td>
-                    <td>{builderName(b.builderId)}</td>
+                    <td>
+                      {b.reservationId ? (
+                        <StatusBadge tone="info">Reservation</StatusBadge>
+                      ) : (
+                        <span className={styles.muted}>Fleet growth</span>
+                      )}
+                    </td>
+                    <td>
+                      {canAssign ? (
+                        <label className={styles.assign}>
+                          <span className={styles.visuallyHidden}>
+                            Assign a builder to this build
+                          </span>
+                          <select
+                            className={styles.select}
+                            defaultValue=""
+                            onChange={(e) => assignBuilder(b.id, e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Assign builder…
+                            </option>
+                            {builders.map((builder) => (
+                              <option key={builder.id} value={builder.id}>
+                                {builder.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        builderName(b.builderId)
+                      )}
+                    </td>
                     <td><StatusBadge tone={d.tone}>{d.label}</StatusBadge></td>
                     <td>
-                      {b.status !== 'completed' ? (
-                        <Button variant="secondary" onClick={() => advance(b.id)}>
+                      {b.status === 'completed' ? (
+                        <span className={styles.muted}>
+                          {b.reservationId ? 'Held for renter' : 'Joined fleet'}
+                        </span>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          onClick={() => advance(b.id)}
+                          disabled={unassigned}
+                          title={
+                            unassigned ? 'Assign a builder first' : undefined
+                          }
+                        >
                           {b.status === 'commissioned' ? 'Start build' : 'Mark complete'}
                         </Button>
-                      ) : (
-                        <span className={styles.muted}>Joined fleet</span>
                       )}
                     </td>
                   </tr>

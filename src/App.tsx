@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { rentalRepository } from './data';
-import type { Trailer } from './types';
+import type { Trailer, TrailerDesign } from './types';
 import { StatusBadge, trailerStatusDisplay } from './components';
 import { specSummary } from './lib/specSummary';
 import { FleetDashboard } from './routes/FleetDashboard/FleetDashboard';
+import { MyDesigns } from './routes/MyDesigns/MyDesigns';
 import { RequestRental } from './routes/RequestRental/RequestRental';
 import styles from './App.module.css';
 
-type View = 'request' | 'browse' | 'fleet';
+type View = 'request' | 'browse' | 'designs' | 'fleet';
 
 function AvailableTrailers() {
   const [trailers, setTrailers] = useState<Trailer[] | null>(null);
@@ -46,6 +47,17 @@ function AvailableTrailers() {
 
 export function App() {
   const [view, setView] = useState<View>('request');
+  // Seed for the request form: a key to force a clean remount, and an optional
+  // design to prefill it from (set when starting a request from a saved design).
+  const [requestSeed, setRequestSeed] = useState<{
+    key: number;
+    design: TrailerDesign | null;
+  }>({ key: 0, design: null });
+
+  function openRequest(design: TrailerDesign | null) {
+    setRequestSeed((prev) => ({ key: prev.key + 1, design }));
+    setView('request');
+  }
 
   return (
     <main className={styles.shell}>
@@ -61,7 +73,7 @@ export function App() {
           type="button"
           className={styles.navButton}
           aria-current={view === 'request' ? 'page' : undefined}
-          onClick={() => setView('request')}
+          onClick={() => openRequest(null)}
         >
           Request a rental
         </button>
@@ -76,6 +88,14 @@ export function App() {
         <button
           type="button"
           className={styles.navButton}
+          aria-current={view === 'designs' ? 'page' : undefined}
+          onClick={() => setView('designs')}
+        >
+          My designs
+        </button>
+        <button
+          type="button"
+          className={styles.navButton}
           aria-current={view === 'fleet' ? 'page' : undefined}
           onClick={() => setView('fleet')}
         >
@@ -84,9 +104,14 @@ export function App() {
       </nav>
 
       {view === 'request' ? (
-        <RequestRental />
+        <RequestRental
+          key={requestSeed.key}
+          initialDesign={requestSeed.design ?? undefined}
+        />
       ) : view === 'browse' ? (
         <AvailableTrailers />
+      ) : view === 'designs' ? (
+        <MyDesigns onStartFromDesign={(design) => openRequest(design)} />
       ) : (
         <FleetDashboard />
       )}

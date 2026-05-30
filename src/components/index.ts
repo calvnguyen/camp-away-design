@@ -10,6 +10,7 @@ export {
   trailerStatusDisplay,
   requestStatusDisplay,
   buildStatusDisplay,
+  reservationStatusDisplay,
 } from './statusDisplay';
 export { Card } from './Card/Card';
 export type { CardProps } from './Card/Card';

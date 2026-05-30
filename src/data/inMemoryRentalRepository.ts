@@ -8,17 +8,27 @@ import type {
   BuildOrder,
   Builder,
   RentalRequest,
+  Reservation,
   Trailer,
+  TrailerDesign,
   TrailerSpec,
 } from '../types';
 import { specSatisfies } from '../lib/matching';
 import {
   seedBuildOrders,
   seedBuilders,
+  seedDesigns,
   seedRequests,
+  seedReservations,
   seedTrailers,
 } from './fixtures';
-import type { CreateRentalRequestInput, RentalRepository } from './types';
+import type {
+  CreateRentalRequestInput,
+  RentalRepository,
+  ReserveBuildInput,
+  ReserveBuildResult,
+  SaveDesignInput,
+} from './types';
 
 const STORAGE_KEY = 'camp-away:rental-state';
 const SIMULATED_LATENCY_MS = 120;
@@ -27,6 +37,8 @@ interface PersistedState {
   trailers: Trailer[];
   requests: RentalRequest[];
   buildOrders: BuildOrder[];
+  designs: TrailerDesign[];
+  reservations: Reservation[];
 }
 
 function uid(prefix: string): string {
@@ -43,6 +55,8 @@ export class InMemoryRentalRepository implements RentalRepository {
   private trailers: Trailer[];
   private requests: RentalRequest[];
   private buildOrders: BuildOrder[];
+  private designs: TrailerDesign[];
+  private reservations: Reservation[];
   private readonly builders: Builder[] = seedBuilders();
 
   constructor(private storage: Storage | null = safeLocalStorage()) {
@@ -50,13 +64,23 @@ export class InMemoryRentalRepository implements RentalRepository {
     this.trailers = loaded.trailers;
     this.requests = loaded.requests;
     this.buildOrders = loaded.buildOrders;
+    this.designs = loaded.designs;
+    this.reservations = loaded.reservations;
   }
 
   private load(): PersistedState {
     const raw = this.storage?.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        return JSON.parse(raw) as PersistedState;
+        const parsed = JSON.parse(raw) as Partial<PersistedState>;
+        // Tolerate state persisted before designs/reservations existed.
+        return {
+          trailers: parsed.trailers ?? seedTrailers(),
+          requests: parsed.requests ?? seedRequests(),
+          buildOrders: parsed.buildOrders ?? seedBuildOrders(),
+          designs: parsed.designs ?? seedDesigns(),
+          reservations: parsed.reservations ?? seedReservations(),
+        };
       } catch {
         // fall through to seed on corrupt data
       }
@@ -65,6 +89,8 @@ export class InMemoryRentalRepository implements RentalRepository {
       trailers: seedTrailers(),
       requests: seedRequests(),
       buildOrders: seedBuildOrders(),
+      designs: seedDesigns(),
+      reservations: seedReservations(),
     };
     this.persist(seeded);
     return seeded;
@@ -74,6 +100,8 @@ export class InMemoryRentalRepository implements RentalRepository {
     this.trailers = state.trailers;
     this.requests = state.requests;
     this.buildOrders = state.buildOrders;
+    this.designs = state.designs;
+    this.reservations = state.reservations;
     this.storage?.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
@@ -82,6 +110,8 @@ export class InMemoryRentalRepository implements RentalRepository {
       trailers: this.trailers,
       requests: this.requests,
       buildOrders: this.buildOrders,
+      designs: this.designs,
+      reservations: this.reservations,
     });
   }
 
@@ -150,6 +180,106 @@ export class InMemoryRentalRepository implements RentalRepository {
     return delay(updated);
   }
 
+  // --- Saved designs ---
+
+  listDesigns(): Promise<TrailerDesign[]> {
+    return delay([...this.designs]);
+  }
+
+  saveDesign(input: SaveDesignInput): Promise<TrailerDesign> {
+    return delay(this.persistDesign(input));
+  }
+
+  /** Save a design synchronously (shared by saveDesign and reserveBuild). */
+  private persistDesign(input: SaveDesignInput): TrailerDesign {
+    const ts = new Date().toISOString();
+    const design: TrailerDesign = {
+      id: uid('design'),
+      clientName: input.clientName,
+      spec: input.spec,
+      notes: input.notes,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    this.designs = [...this.designs, design];
+    this.save();
+    return design;
+  }
+
+  // --- Reservations ---
+
+  listReservations(): Promise<Reservation[]> {
+    return delay([...this.reservations]);
+  }
+
+  reserveBuild(input: ReserveBuildInput): Promise<ReserveBuildResult> {
+    const existing = input.designId
+      ? this.designs.find((d) => d.id === input.designId)
+      : undefined;
+    if (input.designId && !existing) {
+      return Promise.reject(new Error(`Design not found: ${input.designId}`));
+    }
+    const design =
+      existing ??
+      this.persistDesign({
+        clientName: input.clientName,
+        spec: input.spec,
+        notes: input.notes,
+      });
+
+    const ts = new Date().toISOString();
+    const reservationId = uid('res');
+    // The build that fulfils the reservation starts unassigned — ops assigns a builder.
+    const buildOrder: BuildOrder = {
+      id: uid('build'),
+      spec: design.spec,
+      builderId: null,
+      status: 'commissioned',
+      reservationId,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    const reservation: Reservation = {
+      id: reservationId,
+      clientName: input.clientName,
+      designId: design.id,
+      spec: design.spec,
+      buildOrderId: buildOrder.id,
+      heldTrailerId: null,
+      status: 'pending',
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    this.buildOrders = [...this.buildOrders, buildOrder];
+    this.reservations = [...this.reservations, reservation];
+    this.save();
+    return delay({ design, reservation, buildOrder });
+  }
+
+  fulfillReservation(reservationId: string): Promise<Reservation> {
+    const reservation = this.reservations.find((r) => r.id === reservationId);
+    if (!reservation) {
+      return Promise.reject(new Error(`Reservation not found: ${reservationId}`));
+    }
+    if (reservation.status !== 'ready' || !reservation.heldTrailerId) {
+      return Promise.reject(
+        new Error(`Reservation ${reservationId} has no unit ready to rent`),
+      );
+    }
+    const ts = new Date().toISOString();
+    this.trailers = this.trailers.map((t) =>
+      t.id === reservation.heldTrailerId
+        ? { ...t, status: 'rented', heldForReservationId: null }
+        : t,
+    );
+    const updated: Reservation = { ...reservation, status: 'fulfilled', updatedAt: ts };
+    this.reservations = this.reservations.map((r) =>
+      r.id === reservationId ? updated : r,
+    );
+    this.save();
+    return delay(updated);
+  }
+
   // --- Builds ---
 
   listBuildOrders(): Promise<BuildOrder[]> {
@@ -166,6 +296,7 @@ export class InMemoryRentalRepository implements RentalRepository {
       spec,
       builderId,
       status: 'commissioned',
+      reservationId: null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -174,9 +305,30 @@ export class InMemoryRentalRepository implements RentalRepository {
     return delay(order);
   }
 
+  assignBuilder(buildOrderId: string, builderId: string): Promise<BuildOrder> {
+    const order = this.buildOrders.find((b) => b.id === buildOrderId);
+    if (!order) return Promise.reject(new Error(`Build order not found: ${buildOrderId}`));
+    if (!this.builders.some((b) => b.id === builderId)) {
+      return Promise.reject(new Error(`Builder not found: ${builderId}`));
+    }
+    const updated: BuildOrder = {
+      ...order,
+      builderId,
+      updatedAt: new Date().toISOString(),
+    };
+    this.buildOrders = this.buildOrders.map((b) => (b.id === buildOrderId ? updated : b));
+    this.save();
+    return delay(updated);
+  }
+
   advanceBuild(buildOrderId: string): Promise<BuildOrder> {
     const order = this.buildOrders.find((b) => b.id === buildOrderId);
     if (!order) return Promise.reject(new Error(`Build order not found: ${buildOrderId}`));
+    if (order.status === 'commissioned' && !order.builderId) {
+      return Promise.reject(
+        new Error(`Assign a builder before starting build ${buildOrderId}`),
+      );
+    }
     const next: BuildOrder['status'] =
       order.status === 'commissioned'
         ? 'in_progress'
@@ -187,19 +339,29 @@ export class InMemoryRentalRepository implements RentalRepository {
     const updated: BuildOrder = { ...order, status: next, updatedAt: ts };
     this.buildOrders = this.buildOrders.map((b) => (b.id === buildOrderId ? updated : b));
 
-    // On completion, the build grows the fleet with a new available unit.
+    // On completion the build adds a unit to the fleet — held 'reserved' for the
+    // reserving renter if it fulfils a reservation, otherwise generally available.
     if (next === 'completed' && order.status === 'in_progress') {
       const seq = String(this.trailers.length + 16).padStart(3, '0');
-      this.trailers = [
-        ...this.trailers,
-        {
-          id: uid('ca'),
-          name: `CA-${seq}`,
-          spec: order.spec,
-          status: 'available',
-          builtByBuilderId: order.builderId,
-        },
-      ];
+      const isReserved = order.reservationId !== null;
+      const trailer: Trailer = {
+        id: uid('ca'),
+        name: `CA-${seq}`,
+        spec: order.spec,
+        status: isReserved ? 'reserved' : 'available',
+        builtByBuilderId: order.builderId,
+        heldForReservationId: order.reservationId,
+      };
+      this.trailers = [...this.trailers, trailer];
+
+      if (isReserved) {
+        // Hold the finished unit for its reservation and mark it ready to rent.
+        this.reservations = this.reservations.map((r) =>
+          r.id === order.reservationId
+            ? { ...r, status: 'ready', heldTrailerId: trailer.id, updatedAt: ts }
+            : r,
+        );
+      }
     }
     this.save();
     return delay(updated);

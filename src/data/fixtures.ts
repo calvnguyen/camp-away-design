@@ -2,7 +2,9 @@ import type {
   BuildOrder,
   Builder,
   RentalRequest,
+  Reservation,
   Trailer,
+  TrailerDesign,
   TrailerSpec,
 } from '../types';
 
@@ -31,12 +33,12 @@ export function seedBuilders(): Builder[] {
 
 export function seedTrailers(): Trailer[] {
   return [
-    { id: 'ca-016', name: 'CA-016', status: 'available', builtByBuilderId: 'builder-cedar-pine', spec: spec({ trailerLengthFt: 16 }) },
-    { id: 'ca-017', name: 'CA-017', status: 'rented', builtByBuilderId: 'builder-cedar-pine', spec: spec({ solar: true }) },
-    { id: 'ca-018', name: 'CA-018', status: 'available', builtByBuilderId: 'builder-wander', spec: spec({ trailerLengthFt: 18, solar: true, battery: true }) },
-    { id: 'ca-019', name: 'CA-019', status: 'maintenance', builtByBuilderId: 'builder-tiny-foundry', spec: spec() },
-    { id: 'ca-020', name: 'CA-020', status: 'available', builtByBuilderId: 'builder-wander', spec: spec({ trailerLengthFt: 18, battery: true }) },
-    { id: 'ca-021', name: 'CA-021', status: 'available', builtByBuilderId: 'builder-hearth-haul', spec: spec({ trailerLengthFt: 16, hasKitchenette: false }) },
+    { id: 'ca-016', name: 'CA-016', status: 'available', builtByBuilderId: 'builder-cedar-pine', heldForReservationId: null, spec: spec({ trailerLengthFt: 16 }) },
+    { id: 'ca-017', name: 'CA-017', status: 'rented', builtByBuilderId: 'builder-cedar-pine', heldForReservationId: null, spec: spec({ solar: true }) },
+    { id: 'ca-018', name: 'CA-018', status: 'available', builtByBuilderId: 'builder-wander', heldForReservationId: null, spec: spec({ trailerLengthFt: 18, solar: true, battery: true }) },
+    { id: 'ca-019', name: 'CA-019', status: 'maintenance', builtByBuilderId: 'builder-tiny-foundry', heldForReservationId: null, spec: spec() },
+    { id: 'ca-020', name: 'CA-020', status: 'available', builtByBuilderId: 'builder-wander', heldForReservationId: null, spec: spec({ trailerLengthFt: 18, battery: true }) },
+    { id: 'ca-021', name: 'CA-021', status: 'available', builtByBuilderId: 'builder-hearth-haul', heldForReservationId: null, spec: spec({ trailerLengthFt: 16, hasKitchenette: false }) },
   ];
 }
 
@@ -95,7 +97,37 @@ export function seedRequests(): RentalRequest[] {
 
 export function seedBuildOrders(): BuildOrder[] {
   return [
-    { id: 'build-1', spec: spec({ sleeps: 3, solar: true, battery: true }), builderId: 'builder-cedar-pine', status: 'in_progress', createdAt: now, updatedAt: now },
-    { id: 'build-2', spec: spec({ trailerLengthFt: 18, solar: true }), builderId: 'builder-wander', status: 'commissioned', createdAt: now, updatedAt: now },
+    // build-1 fulfils Dev & Sam's reservation (res-dev-sam); it's already in progress.
+    { id: 'build-1', spec: spec({ sleeps: 3, solar: true, battery: true }), builderId: 'builder-cedar-pine', status: 'in_progress', reservationId: 'res-dev-sam', createdAt: now, updatedAt: now },
+    { id: 'build-2', spec: spec({ trailerLengthFt: 18, solar: true }), builderId: 'builder-wander', status: 'commissioned', reservationId: null, createdAt: now, updatedAt: now },
+  ];
+}
+
+export function seedDesigns(): TrailerDesign[] {
+  return [
+    {
+      id: 'design-dev-sam',
+      clientName: 'Dev & Sam',
+      spec: spec({ sleeps: 3, solar: true, battery: true }),
+      notes: 'Need to sleep three, off-grid ready.',
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+}
+
+export function seedReservations(): Reservation[] {
+  return [
+    {
+      id: 'res-dev-sam',
+      clientName: 'Dev & Sam',
+      designId: 'design-dev-sam',
+      spec: spec({ sleeps: 3, solar: true, battery: true }),
+      buildOrderId: 'build-1',
+      heldTrailerId: null,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    },
   ];
 }

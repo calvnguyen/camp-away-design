@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { rentalRepository } from '../../data';
-import type { RentalRequest, Trailer, TrailerSpec } from '../../types';
+import type {
+  RentalRequest,
+  Reservation,
+  Trailer,
+  TrailerDesign,
+  TrailerSpec,
+} from '../../types';
 import {
   Button,
   Card,
@@ -8,6 +14,7 @@ import {
   StatusBadge,
   Toggle,
   requestStatusDisplay,
+  reservationStatusDisplay,
   trailerStatusDisplay,
 } from '../../components';
 import { TRAILER_CONSTRAINTS, validateRequirements } from '../../lib/constraints';
@@ -55,6 +62,22 @@ const initialForm: FormState = {
   battery: false,
 };
 
+// Prefill the form from a saved design (dates stay blank — the renter picks new ones).
+function formFromDesign(design: TrailerDesign | undefined): FormState {
+  if (!design) return initialForm;
+  return {
+    ...initialForm,
+    clientName: design.clientName,
+    notes: design.notes,
+    trailerLengthFt: design.spec.trailerLengthFt,
+    sleeps: design.spec.sleeps,
+    hasWetBath: design.spec.hasWetBath,
+    hasKitchenette: design.spec.hasKitchenette,
+    solar: design.spec.solar,
+    battery: design.spec.battery,
+  };
+}
+
 function validate(form: FormState): FieldErrors {
   const errors: FieldErrors = {};
   if (!form.clientName.trim()) {
@@ -93,9 +116,14 @@ interface Result {
   matches: Trailer[];
 }
 
-export function RequestRental() {
+interface RequestRentalProps {
+  /** When the renter starts a request from a saved design, prefill the form with it. */
+  initialDesign?: TrailerDesign;
+}
+
+export function RequestRental({ initialDesign }: RequestRentalProps = {}) {
   const baseId = useId();
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() => formFromDesign(initialDesign));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -105,6 +133,13 @@ export function RequestRental() {
   const [confirmed, setConfirmed] = useState<Trailer | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
+  // No-match actions: save the design, ask to be notified, or reserve a build.
+  const [noMatchBusy, setNoMatchBusy] = useState<'save' | 'reserve' | null>(null);
+  const [savedDesign, setSavedDesign] = useState<TrailerDesign | null>(null);
+  const [notified, setNotified] = useState(false);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [noMatchError, setNoMatchError] = useState<string | null>(null);
+
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the results once they render, so screen-reader and keyboard
@@ -112,6 +147,12 @@ export function RequestRental() {
   useEffect(() => {
     if (result) resultHeadingRef.current?.focus();
   }, [result]);
+
+  // Reserving swaps the no-match panel for the reservation-success panel,
+  // unmounting the button that was focused — move focus to the new heading.
+  useEffect(() => {
+    if (reservation) resultHeadingRef.current?.focus();
+  }, [reservation]);
 
   const fieldId = (field: ErrorField | 'notes') => `${baseId}-${field}`;
   const lengthWarning = validateRequirements({
@@ -150,6 +191,11 @@ export function RequestRental() {
       const matches = await rentalRepository.findMatches(requirements);
       setConfirmed(null);
       setConfirmError(null);
+      // Fresh outcome — clear any prior no-match actions.
+      setSavedDesign(null);
+      setNotified(false);
+      setReservation(null);
+      setNoMatchError(null);
       setResult({ request, matches });
     } catch {
       setSubmitError(
@@ -185,6 +231,57 @@ export function RequestRental() {
     }
   }
 
+  async function handleSaveDesign() {
+    if (!result) return;
+    setNoMatchBusy('save');
+    setNoMatchError(null);
+    try {
+      const design = await rentalRepository.saveDesign({
+        clientName: result.request.clientName,
+        spec: result.request.requirements,
+        notes: result.request.notes,
+      });
+      setSavedDesign(design);
+    } catch {
+      setNoMatchError("We couldn't save your design. Please try again.");
+    } finally {
+      setNoMatchBusy(null);
+    }
+  }
+
+  function handleNotify() {
+    // MVP: notification is simulated — record the intent so the renter sees it stuck.
+    setNotified(true);
+  }
+
+  async function handleReserve() {
+    if (!result) return;
+    setNoMatchBusy('reserve');
+    setNoMatchError(null);
+    try {
+      const res = await rentalRepository.reserveBuild({
+        clientName: result.request.clientName,
+        spec: result.request.requirements,
+        notes: result.request.notes,
+        // Reuse the design if we already saved it this session, else one is saved.
+        designId: savedDesign?.id,
+      });
+      setSavedDesign(res.design);
+      setReservation(res.reservation);
+    } catch {
+      setNoMatchError("We couldn't place your reservation. Please try again.");
+    } finally {
+      setNoMatchBusy(null);
+    }
+  }
+
+  function clearNoMatchState() {
+    setSavedDesign(null);
+    setNotified(false);
+    setReservation(null);
+    setNoMatchError(null);
+  }
+
   function resetToNewRequest() {
     setForm(initialForm);
     setErrors({});
@@ -192,6 +289,7 @@ export function RequestRental() {
     setConfirmed(null);
     setConfirmError(null);
     setSubmitError(null);
+    clearNoMatchState();
   }
 
   function backToForm() {
@@ -199,6 +297,7 @@ export function RequestRental() {
     setResult(null);
     setConfirmed(null);
     setConfirmError(null);
+    clearNoMatchState();
   }
 
   if (result) {
@@ -278,6 +377,35 @@ export function RequestRental() {
               </Button>
             </div>
           </ResultPanel>
+        ) : reservation ? (
+          <ResultPanel
+            headingId={`${baseId}-result-heading`}
+            headingRef={resultHeadingRef}
+            tone="success"
+            title="Your build is reserved"
+          >
+            <p className={styles.lead}>
+              We've reserved a build of your design for{' '}
+              {result.request.clientName}. A builder will construct it and we'll
+              hold the finished unit for you to rent first — we'll email you when
+              it's ready.
+            </p>
+            <p className={styles.meta}>
+              Reserved spec: {specSummary(reservation.spec)}
+            </p>
+            <p className={styles.statusLine}>
+              Reservation status:{' '}
+              <StatusBadge tone={reservationStatusDisplay[reservation.status].tone}>
+                {reservationStatusDisplay[reservation.status].label}
+              </StatusBadge>
+            </p>
+            <p className={styles.meta}>
+              Find it any time under <strong>My designs &amp; reservations</strong>.
+            </p>
+            <div className={styles.actions}>
+              <Button onClick={resetToNewRequest}>Start a new request</Button>
+            </div>
+          </ResultPanel>
         ) : (
           <ResultPanel
             headingId={`${baseId}-result-heading`}
@@ -288,19 +416,61 @@ export function RequestRental() {
             <p className={styles.lead}>
               Nothing in our fleet currently fits these requirements for{' '}
               {result.request.startDate} to {result.request.endDate}. We've
-              recorded your request as demand for this configuration and will
-              notify you if a matching unit frees up — you're not stuck waiting
-              on a specific build.
+              recorded your design as demand for this configuration. Here's what
+              you can do next:
             </p>
             <p className={styles.meta}>
               You asked for: {specSummary(result.request.requirements)}
             </p>
             <RequestStatusLine request={result.request} />
+
+            {noMatchError ? (
+              <p role="alert" className={styles.error}>
+                {noMatchError}
+              </p>
+            ) : null}
+            {savedDesign ? (
+              <p role="status" className={styles.note}>
+                ✓ Design saved — reopen it any time under My designs &amp;
+                reservations.
+              </p>
+            ) : null}
+            {notified ? (
+              <p role="status" className={styles.note}>
+                ✓ We'll email you if a matching unit frees up for your dates.
+              </p>
+            ) : null}
+
+            <div className={styles.actions}>
+              <Button
+                variant="secondary"
+                onClick={handleSaveDesign}
+                disabled={noMatchBusy !== null || savedDesign !== null}
+              >
+                {noMatchBusy === 'save'
+                  ? 'Saving…'
+                  : savedDesign
+                    ? 'Design saved'
+                    : 'Save design'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleNotify}
+                disabled={notified}
+              >
+                {notified ? 'Notifying you' : 'Notify me'}
+              </Button>
+              <Button onClick={handleReserve} disabled={noMatchBusy !== null}>
+                {noMatchBusy === 'reserve' ? 'Reserving…' : 'Reserve a build'}
+              </Button>
+            </div>
             <div className={styles.actions}>
               <Button variant="secondary" onClick={backToForm}>
                 Adjust my requirements
               </Button>
-              <Button onClick={resetToNewRequest}>Start a new request</Button>
+              <Button variant="secondary" onClick={resetToNewRequest}>
+                Start a new request
+              </Button>
             </div>
           </ResultPanel>
         )}

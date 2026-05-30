@@ -4,6 +4,8 @@ import type {
   BuildOrder,
   Builder,
   RentalRequest,
+  Reservation,
+  ReservationStatus,
   Trailer,
   TrailerStatus,
   RentalRequestStatus,
@@ -20,7 +22,21 @@ const spec = {
 };
 
 function trailer(id: string, status: TrailerStatus): Trailer {
-  return { id, name: id, status, builtByBuilderId: null, spec };
+  return { id, name: id, status, builtByBuilderId: null, heldForReservationId: null, spec };
+}
+
+function reservation(id: string, status: ReservationStatus): Reservation {
+  return {
+    id,
+    clientName: id,
+    designId: `design-${id}`,
+    spec,
+    buildOrderId: `build-${id}`,
+    heldTrailerId: null,
+    status,
+    createdAt: '2026-05-01T00:00:00.000Z',
+    updatedAt: '2026-05-01T00:00:00.000Z',
+  };
 }
 
 function request(id: string, status: RentalRequestStatus): RentalRequest {
@@ -44,6 +60,7 @@ function build(id: string, builderId: string, status: BuildStatus): BuildOrder {
     spec,
     builderId,
     status,
+    reservationId: null,
     createdAt: '2026-05-01T00:00:00.000Z',
     updatedAt: '2026-05-01T00:00:00.000Z',
   };
@@ -74,9 +91,33 @@ describe('computeFleetMetrics', () => {
     expect(m.unfulfilled).toBe(1);
   });
 
+  it('counts held units and reservation demand', () => {
+    const trailers = [
+      trailer('a', 'available'),
+      trailer('b', 'reserved'),
+      trailer('c', 'reserved'),
+    ];
+    const reservations = [
+      reservation('1', 'pending'),
+      reservation('2', 'pending'),
+      reservation('3', 'ready'),
+      reservation('4', 'fulfilled'),
+    ];
+    const m = computeFleetMetrics(trailers, [], reservations);
+    expect(m.reserved).toBe(2);
+    expect(m.pendingReservations).toBe(2);
+    expect(m.readyReservations).toBe(1);
+  });
+
   it('returns zeros for an empty fleet', () => {
     const m = computeFleetMetrics([], []);
-    expect(m).toMatchObject({ fleetSize: 0, utilizationPct: 0, fulfilledPct: 0 });
+    expect(m).toMatchObject({
+      fleetSize: 0,
+      utilizationPct: 0,
+      fulfilledPct: 0,
+      reserved: 0,
+      pendingReservations: 0,
+    });
   });
 });
 

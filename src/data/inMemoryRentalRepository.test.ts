@@ -81,4 +81,95 @@ describe('InMemoryRentalRepository', () => {
     expect(trailers).toHaveLength(before + 1);
     expect(trailers.some((t) => t.spec.sleeps === 3 && t.status === 'available')).toBe(true);
   });
+
+  it('saves a design that can be listed back', async () => {
+    const design = await repo.saveDesign({
+      clientName: 'Saver',
+      spec: spec({ solar: true }),
+      notes: 'reuse me',
+    });
+    const designs = await repo.listDesigns();
+    expect(designs.some((d) => d.id === design.id && d.notes === 'reuse me')).toBe(true);
+  });
+
+  it('reserving a build saves the design and commissions an unassigned, reservation-bound build', async () => {
+    const { design, reservation, buildOrder } = await repo.reserveBuild({
+      clientName: 'Reserver',
+      spec: spec({ sleeps: 4 }),
+      notes: '',
+    });
+
+    expect(reservation.status).toBe('pending');
+    expect(reservation.designId).toBe(design.id);
+    expect(reservation.buildOrderId).toBe(buildOrder.id);
+    // Build is tied to the reservation and starts without a builder.
+    expect(buildOrder.reservationId).toBe(reservation.id);
+    expect(buildOrder.builderId).toBeNull();
+    // The design is persisted.
+    expect((await repo.listDesigns()).some((d) => d.id === design.id)).toBe(true);
+  });
+
+  it('reuses an existing design when reserving with a designId', async () => {
+    const design = await repo.saveDesign({
+      clientName: 'Reuser',
+      spec: spec({ battery: true }),
+      notes: '',
+    });
+    const before = (await repo.listDesigns()).length;
+    const { reservation } = await repo.reserveBuild({
+      clientName: 'Reuser',
+      spec: spec({ battery: true }),
+      notes: '',
+      designId: design.id,
+    });
+    expect(reservation.designId).toBe(design.id);
+    expect((await repo.listDesigns()).length).toBe(before); // no duplicate design
+  });
+
+  it('requires a builder before a reservation build can start', async () => {
+    const { buildOrder } = await repo.reserveBuild({
+      clientName: 'NoBuilder',
+      spec: spec({ sleeps: 3 }),
+      notes: '',
+    });
+    await expect(repo.advanceBuild(buildOrder.id)).rejects.toThrow(/assign a builder/i);
+  });
+
+  it('completing a reservation build holds the unit and makes the reservation ready to rent', async () => {
+    const { reservation, buildOrder } = await repo.reserveBuild({
+      clientName: 'Holder',
+      spec: spec({ sleeps: 3 }),
+      notes: '',
+    });
+    await repo.assignBuilder(buildOrder.id, 'builder-wander');
+    await repo.advanceBuild(buildOrder.id); // commissioned -> in_progress
+    await repo.advanceBuild(buildOrder.id); // in_progress -> completed
+
+    const updatedReservation = (await repo.listReservations()).find(
+      (r) => r.id === reservation.id,
+    );
+    expect(updatedReservation?.status).toBe('ready');
+    expect(updatedReservation?.heldTrailerId).not.toBeNull();
+
+    const held = (await repo.listTrailers()).find(
+      (t) => t.id === updatedReservation?.heldTrailerId,
+    );
+    expect(held?.status).toBe('reserved');
+    expect(held?.heldForReservationId).toBe(reservation.id);
+
+    // Renter rents the held unit: it becomes rented and the reservation fulfilled.
+    const fulfilled = await repo.fulfillReservation(reservation.id);
+    expect(fulfilled.status).toBe('fulfilled');
+    const rented = (await repo.listTrailers()).find((t) => t.id === held?.id);
+    expect(rented?.status).toBe('rented');
+  });
+
+  it('rejects fulfilling a reservation that has no unit ready', async () => {
+    const { reservation } = await repo.reserveBuild({
+      clientName: 'Early',
+      spec: spec({ sleeps: 3 }),
+      notes: '',
+    });
+    await expect(repo.fulfillReservation(reservation.id)).rejects.toThrow(/ready/i);
+  });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { RequestRental } from './RequestRental';
@@ -89,22 +89,72 @@ describe('RequestRental', () => {
     expect(screen.getByText(/CA-018/)).toBeInTheDocument();
   });
 
-  it('records an unfulfillable request as demand and explains why', async () => {
-    render(<RequestRental />);
+  // Submits a configuration no seeded available unit can satisfy (sleeps 3).
+  async function submitUnmatchable() {
     fillContactAndDates();
-    // No seeded available unit sleeps 3 — this cannot be matched.
     fireEvent.change(screen.getByLabelText(/sleeping capacity/i), {
       target: { value: '3' },
     });
     await userEvent.click(
       screen.getByRole('button', { name: /find available trailers/i }),
     );
+    await screen.findByRole('heading', { name: /no available trailer matches/i });
+  }
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: /no available trailer matches/i }),
-      ).toBeInTheDocument(),
+  it('records an unfulfillable request as demand and offers save/notify/reserve', async () => {
+    render(<RequestRental />);
+    await submitUnmatchable();
+
+    expect(screen.getByText(/recorded your design as demand/i)).toBeInTheDocument();
+    // PRD: the no-match state offers all three paths.
+    expect(screen.getByRole('button', { name: /^save design$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^notify me$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reserve a build/i })).toBeInTheDocument();
+  });
+
+  it('saves a design from the no-match state', async () => {
+    render(<RequestRental />);
+    await submitUnmatchable();
+
+    await userEvent.click(screen.getByRole('button', { name: /^save design$/i }));
+    const note = await screen.findByRole('status');
+    expect(note).toHaveTextContent(/design saved/i);
+    expect(screen.getByRole('button', { name: /design saved/i })).toBeDisabled();
+  });
+
+  it('reserves a build of a no-match design and shows a pending reservation', async () => {
+    render(<RequestRental />);
+    await submitUnmatchable();
+
+    await userEvent.click(screen.getByRole('button', { name: /reserve a build/i }));
+    expect(
+      await screen.findByRole('heading', { name: /your build is reserved/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/build in progress/i)).toBeInTheDocument();
+  });
+
+  it('prefills the form from a saved design', () => {
+    render(
+      <RequestRental
+        initialDesign={{
+          id: 'design-1',
+          clientName: 'Prefilled Renter',
+          notes: 'From a saved design',
+          spec: {
+            trailerLengthFt: 18,
+            sleeps: 3,
+            hasWetBath: true,
+            hasKitchenette: true,
+            solar: true,
+            battery: false,
+          },
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        }}
+      />,
     );
-    expect(screen.getByText(/recorded your request as demand/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/your name/i)).toHaveValue('Prefilled Renter');
+    expect(screen.getByLabelText(/sleeping capacity/i)).toHaveValue(3);
+    expect(screen.getByLabelText(/solar panel/i)).toBeChecked();
   });
 });
