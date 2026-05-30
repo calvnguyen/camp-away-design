@@ -1,122 +1,90 @@
-// Shared domain types for Camp Away Design — a design-first rental platform for
-// small, SUV-towable tiny trailers. See ../../../../docs/prd.md for the spec.
+// Shared domain types for CampAwayDesign — a design front-door for affordable,
+// SUV-towable tiny trailers. See ../../../../docs/prd.md for the product spec.
 //
-// Model: a renter DESIGNS the trailer they want (a TrailerSpec) and submits it
-// as a RentalRequest; the platform matches it to an AVAILABLE Trailer in the
-// fleet. A renter can SAVE a design (TrailerDesign) to reuse, and when nothing
-// matches they can RESERVE a build — a BuildOrder flagged for their request,
-// whose finished unit is HELD ('reserved') for them before it joins the general
-// fleet. Ops also commission BuildOrders from third-party Builders against
-// aggregate demand, decoupled from any single request.
+// Model (the redesigned "projects" IA): a client submits a Brief describing the
+// trailer they want. That becomes a Project. An assigned firm uploads Floorplan
+// versions; client and designer discuss them via Comments; the client approves a
+// floorplan, which moves the Project to `approved`. Ops oversee everything from
+// an admin dashboard (all projects, firms, platform metrics).
 
-export type UserRole = 'client' | 'builder' | 'admin';
+export type ProjectStatus =
+  | 'draft' // brief started, not yet submitted
+  | 'submitted' // brief submitted, awaiting first floorplan
+  | 'in_review' // a floorplan version is up for client review
+  | 'approved'; // client approved the current floorplan
 
-/** The shared shape of a trailer's capabilities — used both for fleet units
- *  and for what a renter requires. */
-export interface TrailerSpec {
-  trailerLengthFt: number; // small only, target 16-18
+/** The client's requirements for their trailer — captured by the brief form and
+ *  shown read-only on the project view. Mirrors the PRD's small-trailer envelope. */
+export interface TrailerBrief {
+  trailerLengthFt: number; // small only, target 16–18
   sleeps: number; // adults
   hasWetBath: boolean;
   hasKitchenette: boolean;
-  solar: boolean;
-  battery: boolean;
-}
-
-export type TrailerStatus =
-  | 'available' // rentable now
-  | 'rented' // currently out on a confirmed rental
-  | 'reserved' // built and held for a specific renter's reservation; not generally rentable until they rent it (or the hold is released)
-  | 'maintenance'; // temporarily not rentable
-
-/** A rentable unit in the fleet. */
-export interface Trailer {
-  id: string;
-  /** Fleet label, e.g. "CA-017". */
-  name: string;
-  spec: TrailerSpec;
-  status: TrailerStatus;
-  /** The third-party builder that built it, if it came from a commissioned build. */
-  builtByBuilderId: string | null;
-  /** When status is 'reserved', the reservation this unit is held for. */
-  heldForReservationId: string | null;
-}
-
-/** A renter's saved trailer design — reusable/refinable and re-submittable, and
- *  the thing a reservation is built from when nothing in the fleet matches. */
-export interface TrailerDesign {
-  id: string;
-  clientName: string;
-  spec: TrailerSpec;
+  solar: boolean; // optional upgrade
+  battery: boolean; // optional upgrade
+  budgetUsd: number; // target under ~50k
   notes: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export type RentalRequestStatus =
-  | 'open' // submitted, matching not yet resolved
-  | 'matched' // at least one available unit fits; awaiting renter confirmation
-  | 'confirmed' // renter confirmed a unit (held for the dates)
-  | 'unfulfilled'; // no available unit fits — recorded as demand signal
+export type FloorplanStatus =
+  | 'current' // the latest version, up for review
+  | 'superseded'; // an older version kept for history
 
-/** A renter's request for a trailer rental. */
-export interface RentalRequest {
+/** One uploaded floorplan version for a project. */
+export interface Floorplan {
+  id: string;
+  version: number; // 1-based; higher = newer
+  status: FloorplanStatus;
+  uploadedBy: string; // e.g. "designer"
+  uploadedAt: string; // ISO date
+  /** Human label shown on the canvas, e.g. "17ft Trailer Layout". */
+  label: string;
+}
+
+export type CommentRole = 'client' | 'designer';
+
+/** A message in a project's review thread. */
+export interface Comment {
+  id: string;
+  author: string;
+  role: CommentRole;
+  body: string;
+  createdAt: string; // ISO date
+}
+
+/** A client engagement: their brief, the floorplan versions produced for it, and
+ *  the review conversation. */
+export interface Project {
   id: string;
   clientName: string;
-  requirements: TrailerSpec;
-  startDate: string; // ISO date
-  endDate: string; // ISO date
-  notes: string;
-  status: RentalRequestStatus;
-  /** The unit the renter confirmed (or the leading match), else null. */
-  matchedTrailerId: string | null;
-  createdAt: string;
-  updatedAt: string;
+  brief: TrailerBrief;
+  status: ProjectStatus;
+  /** The firm assigned to design this project, or null if unassigned. */
+  firmId: string | null;
+  /** Cover image for the project card / hero. */
+  thumbnailUrl: string;
+  /** Additional hero gallery images on the project view. */
+  galleryUrls: string[];
+  floorplans: Floorplan[];
+  comments: Comment[];
+  createdAt: string; // ISO date
+  updatedAt: string; // ISO date
 }
 
-export type BuildStatus = 'commissioned' | 'in_progress' | 'completed';
-
-/** A build the platform commissions from a third-party builder to grow the
- *  fleet. Usually decoupled from any single request, but can be tied to a
- *  renter's Reservation (see `reservationId`) — when that build completes, the
- *  finished unit is held for the reserving renter instead of joining the
- *  general pool. */
-export interface BuildOrder {
-  id: string;
-  spec: TrailerSpec;
-  builderId: string | null;
-  status: BuildStatus;
-  /** Set when this build fulfils a renter's reservation; null for fleet-growth builds. */
-  reservationId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type ReservationStatus =
-  | 'pending' // build commissioned for the design, not yet complete
-  | 'ready' // build complete; a unit is held for the renter to rent
-  | 'fulfilled' // renter rented the held unit
-  | 'cancelled'; // reservation withdrawn before fulfilment
-
-/** A renter's claim on the first rental of a build their no-match design
- *  triggered. Ties the renter + design to the BuildOrder constructing it and,
- *  once built, to the held unit. */
-export interface Reservation {
-  id: string;
-  clientName: string;
-  /** The saved design this reservation is built from. */
-  designId: string;
-  spec: TrailerSpec;
-  /** The build commissioned to fulfil this reservation. */
-  buildOrderId: string;
-  /** The finished unit held for the renter, once the build completes. */
-  heldTrailerId: string | null;
-  status: ReservationStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** A third-party builder that builds small trailers for the fleet. */
-export interface Builder {
+/** A third-party design/build firm. */
+export interface Firm {
   id: string;
   name: string;
+  /** How many projects the firm is actively working on. */
+  activeProjects: number;
+}
+
+/** Aggregate platform metrics for the admin dashboard. */
+export interface DashboardStats {
+  activeProjects: number;
+  /** Share of projects that reached `approved` (0–1). */
+  reachedApprovalRate: number;
+  avgRevisionRounds: number;
+  avgDaysToFirstPlan: number;
+  activeFirms: number;
 }
