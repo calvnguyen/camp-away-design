@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { RequirementForm } from './RequirementForm';
 
+// Use the component-based <MemoryRouter> (not createMemoryRouter): the data
+// router builds a fetch Request whose AbortSignal isn't Node's undici
+// AbortSignal under jsdom, which throws. MemoryRouter + Routes navigates without
+// that machinery.
 function renderForm() {
   return render(
     <MemoryRouter initialEntries={['/new']}>
-      <RequirementForm />
+      <Routes>
+        <Route path="/new" element={<RequirementForm />} />
+        <Route path="/project/:id" element={<div>Project page</div>} />
+        <Route path="/" element={<div>Projects home</div>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -39,7 +47,8 @@ describe('RequirementForm', () => {
     await user.click(screen.getByRole('button', { name: /submit brief/i }));
 
     expect(length).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByText(/16–18 ft/i)).toBeInTheDocument();
+    const error = screen.getByText(/must be 16–18 ft/i);
+    expect(error).toHaveAttribute('role', 'alert');
   });
 
   it('exposes feature toggles as switches with state', async () => {
@@ -54,14 +63,7 @@ describe('RequirementForm', () => {
 
   it('submits a valid brief and navigates to the new project', async () => {
     const user = userEvent.setup();
-    const router = createMemoryRouter(
-      [
-        { path: '/new', Component: RequirementForm },
-        { path: '/project/:id', Component: () => <div>Project page</div> },
-      ],
-      { initialEntries: ['/new'] },
-    );
-    render(<RouterProvider router={router} />);
+    renderForm();
 
     await user.type(screen.getByLabelText(/client name/i), 'Valid Client');
     await user.type(screen.getByLabelText(/budget/i), '40000');

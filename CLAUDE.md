@@ -4,6 +4,21 @@ Camp Away Design is a web app for **renting affordable, SUV-towable tiny trailer
 
 **Status:** MVP prototype, frontend-only. Full product spec lives in `../../docs/prd.md` — read it before adding features. This CLAUDE.md is the source of truth for *how* we build; the PRD is the source of truth for *what* we build.
 
+## ⏳ Redesign migration (in progress, 2026-05-30)
+
+We are porting the Figma Make redesign **"CampAwayDesign-Modernize"** (Figma file key `IieelMEAXBI92AQULNseDx`, a `/make/` file — read it via `get_design_context` with `nodeId 0:1`, then `ReadMcpResourceTool` on the returned `file://figma/make/source/...` URIs **without** the `?fileKey=` suffix). Two decisions drove this (confirmed with Calvin):
+
+1. **Hybrid styling** — adopt **Tailwind v4**, keep the **repository data-layer seam**. (So the "no Tailwind / CSS Modules only" rule below is now superseded for new screens — see Stack note.)
+2. **Adopt the new IA** — the product is now framed as **Projects → requirement brief → project view → floorplan review → admin dashboard**, replacing the old rental/fleet/match/reserve-a-build screens.
+
+**Done:** Tailwind wired (`@tailwindcss/vite` in `vite.config.ts`, `src/styles/index.css` is the entry, imported in `main.tsx`); `react-router` + `lucide-react` installed. New domain in `src/types/index.ts` (Project, TrailerBrief, Floorplan, Comment, Firm, DashboardStats). New `ProjectRepository` interface (`src/data/types.ts`) + `InMemoryProjectRepository` (`src/data/inMemoryProjectRepository.ts`, localStorage-backed) + `src/data/fixtures.ts` (Maria & Jon, etc.). Five route screens under `src/routes/{ProjectList,RequirementForm,ProjectView,FloorplanReview,AdminDashboard}` wired to `projectRepository`, plus `src/components/AppNav.tsx` + `ImageWithFallback.tsx`, `src/routes.tsx`, and `src/lib/projectStatus.ts` (status→pill mapping, always renders a text label so colour isn't the only signal). Old rental files (routes, matching/fleetMetrics/specSummary libs, inMemoryRentalRepository, old statusDisplay, App.module.css) were deleted. `constraints.ts` kept (brief validation). typecheck + lint + `npm run build` are **green**.
+
+**Gotcha (Node 24):** `localStorage` is a native Node global that is `undefined` without `--localstorage-file`, and it **shadows jsdom's** `window.localStorage` in the vitest jsdom env. Fixed in `src/setupTests.ts` (in-memory polyfill). Run unit tests with `npx vitest run --project unit` (the `unit` project is jsdom; the second `storybook` project needs a Playwright browser).
+
+**Verified green:** `npx tsc --noEmit`, `npx eslint .`, `npm run build`, and `npx vitest run --project unit` (33 tests) all pass as of 2026-05-30.
+
+**Remaining (optional):** add ProjectList/ProjectView/FloorplanReview/AdminDashboard component tests; verify visually in the browser (`npm run dev`); then fold this section's permanent decisions into the body below and delete this status block.
+
 ## Who I'm working with
 
 **Calvin Nguyen** — senior frontend engineer, ~9 years with **deep expertise in Angular and TypeScript**, plus **some React experience**.
@@ -15,7 +30,7 @@ Camp Away Design is a web app for **renting affordable, SUV-towable tiny trailer
 ## Stack
 
 - **Next.js (App Router) + React + TypeScript** — server components for data fetching, client components for interactivity.
-- **CSS Modules** for styling — no Tailwind, no CSS-in-JS.
+- **Styling: Tailwind v4** (adopted in the redesign migration — see the status block above). Use the warm stone / forest-green palette as arbitrary values (e.g. `bg-[#2f6f4f]`, text `#1c1a17`, muted `#6b6560`, surface `#fff`, border `#e3e0da`, bg gradient `#f7f6f3`→`#ebe9e3`). The few remaining CSS-Module components under `src/components/{Button,Card,Input,Toggle,StatusBadge}` are legacy and unused by the new screens. _(Historical: the project was originally CSS Modules, no Tailwind.)_
 - **Supabase** as the backend — **Postgres** (database), Supabase Storage (reference-image & trailer-photo uploads), and optionally Supabase Auth. Always accessed **behind the data layer** (see below), never imported directly into components/pages.
 - **Testing:** **Vitest + React Testing Library** for unit/component tests; **Playwright** for end-to-end flows (design → match → confirm; design → no match → reserve build; commission build) and as the browser runner for Storybook component tests.
 
