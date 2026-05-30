@@ -8,6 +8,17 @@
   --color-accent: #2f6f4f;
   --color-border: #e3e0da;
 
+  /* Project status colors (fg = text, bg = pill background). Mirror the
+     Figma "Color" collection's status tokens; keep the two in sync. */
+  --color-status-draft-fg: #6b6560;
+  --color-status-draft-bg: #f7f6f3;
+  --color-status-submitted-fg: #2563eb;
+  --color-status-submitted-bg: #e7eefb;
+  --color-status-in-review-fg: #b45309;
+  --color-status-in-review-bg: #fbf0e2;
+  --color-status-approved-fg: #2f6f4f;
+  --color-status-approved-bg: #e7f0eb;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;

@@ -1,36 +1,51 @@
-// The repository interface every component depends on. Components NEVER touch
-// localStorage, fixtures, or mock arrays directly — they go through this.
-// Swapping to a real backend later means writing a new implementation of this
-// interface and nothing else.
+// The repository interface every component depends on. Components, pages, and
+// server code NEVER touch localStorage, fixtures, mock arrays, or a real
+// backend client directly — they go through this. Swapping to Supabase later
+// means writing a new implementation of this interface and nothing else.
 
-import type { Brief, Comment, Floorplan, Project, UserRole } from '../types';
+import type {
+  BuildOrder,
+  Builder,
+  RentalRequest,
+  Trailer,
+  TrailerSpec,
+} from '../types';
 
-export interface CreateProjectInput {
+export interface CreateRentalRequestInput {
   clientName: string;
-  brief: Brief;
+  requirements: TrailerSpec;
+  startDate: string;
+  endDate: string;
+  notes: string;
 }
 
-export interface ProjectRepository {
-  listProjects(): Promise<Project[]>;
-  getProject(id: string): Promise<Project | null>;
-  createProject(input: CreateProjectInput): Promise<Project>;
-  updateBrief(projectId: string, brief: Brief): Promise<Project>;
+export interface RentalRepository {
+  // --- Fleet ---
+  listTrailers(): Promise<Trailer[]>;
+  /** Available units whose spec satisfies the given requirements. */
+  findMatches(requirements: TrailerSpec): Promise<Trailer[]>;
 
-  /** Adds a new floorplan version. Resets approval and moves status to in_review. */
-  addFloorplan(
-    projectId: string,
-    floorplan: Pick<Floorplan, 'src' | 'fileName' | 'uploadedBy'>,
-  ): Promise<Project>;
+  // --- Rental requests ---
+  listRequests(): Promise<RentalRequest[]>;
+  /**
+   * Creates a request and resolves it by matching available units:
+   * 'matched' (with a leading match) if any fit, else 'unfulfilled' (recorded
+   * as demand signal — never queued behind a not-yet-built unit).
+   */
+  createRequest(input: CreateRentalRequestInput): Promise<RentalRequest>;
+  /** Renter confirms an available unit: marks the unit rented and the request confirmed. */
+  confirmRental(requestId: string, trailerId: string): Promise<RentalRequest>;
 
-  addComment(
-    projectId: string,
-    comment: Pick<Comment, 'floorplanId' | 'author' | 'body'>,
-  ): Promise<Project>;
+  // --- Builds (decoupled fleet growth) ---
+  listBuildOrders(): Promise<BuildOrder[]>;
+  commissionBuild(spec: TrailerSpec, builderId: string): Promise<BuildOrder>;
+  /**
+   * Advances a build commissioned → in_progress → completed. On completion a
+   * new AVAILABLE trailer with that spec is added to the fleet — it is not
+   * assigned to any past requester.
+   */
+  advanceBuild(buildOrderId: string): Promise<BuildOrder>;
 
-  /** Locks the given floorplan as approved (client sign-off). */
-  approveFloorplan(
-    projectId: string,
-    floorplanId: string,
-    by: UserRole,
-  ): Promise<Project>;
+  // --- Builders ---
+  listBuilders(): Promise<Builder[]>;
 }

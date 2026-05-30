@@ -1,60 +1,79 @@
-// Shared domain types for CampAwayDesign.
-// See ../../../../docs/prd.md for the product spec these model.
+// Shared domain types for Camp Away Design — a design-first rental platform for
+// small, SUV-towable tiny trailers. See ../../../../docs/prd.md for the spec.
+//
+// Model: a renter DESIGNS the trailer they want (a TrailerSpec) and submits it
+// as a RentalRequest; the platform matches it to an AVAILABLE Trailer in the
+// fleet. A renter can SAVE a design (TrailerDesign) to reuse, and when nothing
+// matches they can RESERVE a build — a BuildOrder flagged for their request,
+// whose finished unit is HELD ('reserved') for them before it joins the general
+// fleet. Ops also commission BuildOrders from third-party Builders against
+// aggregate demand, decoupled from any single request.
 
-export type UserRole = 'client' | 'designer' | 'builder';
+export type UserRole = 'client' | 'builder' | 'admin';
 
-export type ProjectStatus =
-  | 'draft' // client is still filling out the brief
-  | 'submitted' // brief sent to a firm, awaiting first floorplan
-  | 'in_review' // floorplan(s) uploaded, under client review
-  | 'approved'; // client has approved the latest floorplan
-
-/** A client's requirements for their trailer home. */
-export interface Brief {
-  trailerLengthFt: number; // target 16-18
+/** The shared shape of a trailer's capabilities — used both for fleet units
+ *  and for what a renter requires. */
+export interface TrailerSpec {
+  trailerLengthFt: number; // small only, target 16-18
   sleeps: number; // adults
   hasWetBath: boolean;
   hasKitchenette: boolean;
-  solarUpgrade: boolean;
-  batteryUpgrade: boolean;
-  budgetUsd: number; // target under ~50_000
-  notes: string;
-  referenceImages: ReferenceImage[];
+  solar: boolean;
+  battery: boolean;
 }
 
-export interface ReferenceImage {
+export type TrailerStatus =
+  | 'available' // rentable now
+  | 'rented' // currently out on a confirmed rental
+  | 'maintenance'; // temporarily not rentable
+
+/** A rentable unit in the fleet. */
+export interface Trailer {
   id: string;
-  /** Simulated upload: object URL or base64 data URL. No real storage in the MVP. */
-  src: string;
-  fileName: string;
+  /** Fleet label, e.g. "CA-017". */
+  name: string;
+  spec: TrailerSpec;
+  status: TrailerStatus;
+  /** The third-party builder that built it, if it came from a commissioned build. */
+  builtByBuilderId: string | null;
 }
 
-export interface Floorplan {
-  id: string;
-  version: number; // 1-based, increments per upload
-  /** Simulated upload, as with reference images. */
-  src: string;
-  fileName: string;
-  uploadedBy: UserRole;
-  uploadedAt: string; // ISO timestamp
-}
+export type RentalRequestStatus =
+  | 'open' // submitted, matching not yet resolved
+  | 'matched' // at least one available unit fits; awaiting renter confirmation
+  | 'confirmed' // renter confirmed a unit (held for the dates)
+  | 'unfulfilled'; // no available unit fits — recorded as demand signal
 
-export interface Comment {
-  id: string;
-  floorplanId: string;
-  author: UserRole;
-  body: string;
-  createdAt: string; // ISO timestamp
-}
-
-export interface Project {
+/** A renter's request for a trailer rental. */
+export interface RentalRequest {
   id: string;
   clientName: string;
-  status: ProjectStatus;
-  brief: Brief;
-  floorplans: Floorplan[];
-  comments: Comment[];
-  approvedFloorplanId: string | null;
+  requirements: TrailerSpec;
+  startDate: string; // ISO date
+  endDate: string; // ISO date
+  notes: string;
+  status: RentalRequestStatus;
+  /** The unit the renter confirmed (or the leading match), else null. */
+  matchedTrailerId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type BuildStatus = 'commissioned' | 'in_progress' | 'completed';
+
+/** A build the platform commissions from a third-party builder to grow the
+ *  fleet. Decoupled from any specific rental request. */
+export interface BuildOrder {
+  id: string;
+  spec: TrailerSpec;
+  builderId: string | null;
+  status: BuildStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A third-party builder that builds small trailers for the fleet. */
+export interface Builder {
+  id: string;
+  name: string;
 }

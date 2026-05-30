@@ -5,25 +5,25 @@ export const TRAILER_CONSTRAINTS = {
   trailerLengthFt: { min: 16, max: 18, default: 17 },
   sleeps: { default: 2 },
   maxLoadedWeightLbs: 5_000,
-  budgetUsd: { target: 50_000, default: 45_000 },
+  /** Small trailers must be buildable under this to stay quick + cheap (build-side ceiling). */
+  buildCostCeilingUsd: 50_000,
 } as const;
 
-/** Validate a brief's headline fields against the PRD targets. Returns field-keyed messages. */
-export function validateBriefConstraints(input: {
+/**
+ * Validate a rental request's headline fields against the small-trailer range.
+ * Returns field-keyed warning messages (soft — these warn, they don't block).
+ */
+export function validateRequirements(input: {
   trailerLengthFt: number;
-  budgetUsd: number;
-}): Partial<Record<'trailerLengthFt' | 'budgetUsd', string>> {
-  const errors: Partial<Record<'trailerLengthFt' | 'budgetUsd', string>> = {};
-  const { trailerLengthFt, budgetUsd } = TRAILER_CONSTRAINTS;
+}): Partial<Record<'trailerLengthFt', string>> {
+  const errors: Partial<Record<'trailerLengthFt', string>> = {};
+  const { trailerLengthFt } = TRAILER_CONSTRAINTS;
 
   if (
     input.trailerLengthFt < trailerLengthFt.min ||
     input.trailerLengthFt > trailerLengthFt.max
   ) {
-    errors.trailerLengthFt = `Trailer length should be ${trailerLengthFt.min}–${trailerLengthFt.max} ft for SUV towing.`;
-  }
-  if (input.budgetUsd > budgetUsd.target) {
-    errors.budgetUsd = `Budget is above the ~$${budgetUsd.target.toLocaleString()} target.`;
+    errors.trailerLengthFt = `Trailer length should be ${trailerLengthFt.min}–${trailerLengthFt.max} ft for a small, SUV-towable rental.`;
   }
   return errors;
 }
