@@ -2,7 +2,24 @@
 // (Maria & Jon, Dev & Sam, The Okafors, …). Kept here so the repository stays
 // the only place that knows about concrete data.
 
-import type { Firm, Project, TrailerBrief } from '../types';
+import type { ConceptLayout, Firm, Project, TrailerBrief } from '../types';
+import { envelopeFor, templateLayout, templateRationale } from '../lib/conceptLayout';
+
+/** A pre-generated, template-sourced concept layout awaiting review. */
+function pendingConceptLayout(brief: TrailerBrief, id: string, at: string): ConceptLayout {
+  const envelope = envelopeFor(brief);
+  return {
+    id,
+    status: 'pending_review',
+    source: 'template',
+    lengthFt: envelope.lengthFt,
+    widthFt: envelope.widthFt,
+    zones: templateLayout(envelope),
+    rationale: templateRationale(envelope),
+    createdAt: at,
+    updatedAt: at,
+  };
+}
 
 const now = '2026-05-29T12:00:00.000Z';
 
@@ -88,6 +105,7 @@ export function seedProjects(): Project[] {
           createdAt: '2026-05-28T12:00:00.000Z',
         },
       ],
+      conceptLayout: null,
       createdAt: '2026-05-15T12:00:00.000Z',
       updatedAt: '2026-05-28T12:00:00.000Z',
     },
@@ -106,6 +124,7 @@ export function seedProjects(): Project[] {
       galleryUrls: [img('1604549001484-df28edea610b', 1080)],
       floorplans: [],
       comments: [],
+      conceptLayout: null,
       createdAt: '2026-05-26T12:00:00.000Z',
       updatedAt: '2026-05-26T12:00:00.000Z',
     },
@@ -148,19 +167,23 @@ export function seedProjects(): Project[] {
         },
       ],
       comments: [],
+      conceptLayout: null,
       createdAt: '2026-05-02T12:00:00.000Z',
       updatedAt: '2026-05-18T12:00:00.000Z',
     },
     {
       id: '4',
       clientName: 'Lena T.',
-      brief: brief({ trailerLengthFt: 17, budgetUsd: 50_000 }),
+      // Sleeps 3 → no equivalent standard build, so a concept layout applies
+      // (not yet generated — the project view offers to generate one).
+      brief: brief({ trailerLengthFt: 17, sleeps: 3, budgetUsd: 50_000, notes: 'Needs to sleep three.' }),
       status: 'draft',
       firmId: 'firm-cedar-pine',
       thumbnailUrl: img('1641996992441-244ee607935b', 400),
       galleryUrls: [img('1641996992441-244ee607935b', 1080)],
       floorplans: [],
       comments: [],
+      conceptLayout: null,
       createdAt: now,
       updatedAt: now,
     },
@@ -183,8 +206,35 @@ export function seedProjects(): Project[] {
         },
       ],
       comments: [],
+      conceptLayout: null,
       createdAt: '2026-05-20T12:00:00.000Z',
       updatedAt: '2026-05-27T12:00:00.000Z',
+    },
+    {
+      id: '6',
+      clientName: 'Aria & Sky',
+      // Wet bath omitted → no equivalent build; a concept layout has been
+      // generated and is awaiting approval (the production gate).
+      brief: brief({
+        trailerLengthFt: 18,
+        sleeps: 2,
+        hasWetBath: false,
+        budgetUsd: 39_000,
+        notes: 'Prefer a portable toilet and more storage over a wet bath.',
+      }),
+      status: 'submitted',
+      firmId: null,
+      thumbnailUrl: img('1641996992441-244ee607935b', 400),
+      galleryUrls: [img('1641996992441-244ee607935b', 1080)],
+      floorplans: [],
+      comments: [],
+      conceptLayout: pendingConceptLayout(
+        brief({ trailerLengthFt: 18, sleeps: 2, hasWetBath: false }),
+        'concept-aria-sky',
+        '2026-05-29T12:00:00.000Z',
+      ),
+      createdAt: '2026-05-29T12:00:00.000Z',
+      updatedAt: '2026-05-29T12:00:00.000Z',
     },
   ];
 }

@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom';
+import { afterEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
+
+// Unmount React trees between tests so rendered DOM doesn't leak across cases.
+afterEach(() => cleanup());
 
 // Node 24 exposes a native `localStorage` global that is `undefined` unless the
 // process is started with `--localstorage-file`, and it shadows jsdom's

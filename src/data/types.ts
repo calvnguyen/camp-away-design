@@ -6,9 +6,11 @@
 import type {
   Comment,
   CommentRole,
+  ConceptLayout,
   DashboardStats,
   Firm,
   Project,
+  StandardBuild,
   TrailerBrief,
 } from '../types';
 
@@ -43,6 +45,26 @@ export interface ProjectRepository {
    * Throws if the project has no floorplan to approve.
    */
   approveCurrentFloorplan(projectId: string): Promise<Project>;
+
+  // --- Concept layout (no-equivalent-build path) ---
+  /**
+   * The standard build equivalent to a project's brief, or null if none exists.
+   * A null result is the precondition for generating a concept layout.
+   */
+  findEquivalentBuild(projectId: string): Promise<StandardBuild | null>;
+  /**
+   * Generate a rough 2D concept layout for a project whose brief has no
+   * equivalent build, and attach it as `pending_review`. Throws if an
+   * equivalent build already exists (a layout would be redundant).
+   */
+  generateConceptLayout(projectId: string): Promise<ConceptLayout>;
+  /**
+   * Approve the project's concept layout. This is the gate to production: only
+   * an approved layout lets the project be built. Throws if there's no layout.
+   */
+  approveConceptLayout(projectId: string): Promise<ConceptLayout>;
+  /** Reject the concept layout so it can be regenerated. Throws if none exists. */
+  rejectConceptLayout(projectId: string): Promise<ConceptLayout>;
 
   // --- Firms & metrics ---
   listFirms(): Promise<Firm[]>;

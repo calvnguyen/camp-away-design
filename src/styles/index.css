@@ -3,12 +3,15 @@
 /*
  * CampAwayDesign — Tailwind v4 entry.
  *
- * The screens use the warm stone / forest-green palette directly as Tailwind
- * arbitrary values (e.g. bg-[#2f6f4f]); the design tokens below are kept as CSS
- * variables so non-utility CSS and future shared components can reference one
- * source of truth. Palette mirrors the original tokens.css.
+ * Design tokens are the source of truth, reconciled with the Figma design-system
+ * file "CampAwayDesign — MVP Design System" (file key hBeXSrJfUFNZYKleftQ18b,
+ * Foundations) via get_variable_defs — the values below match the Figma `Color`,
+ * `Spacing`, and `Radius` collections exactly. The screens currently use the raw
+ * hex as Tailwind arbitrary values (e.g. bg-[#2f6f4f]); these CSS variables + the
+ * @theme map expose the same palette semantically for new/shared components.
  */
 :root {
+  /* Color/* (semantic) */
   --color-bg: #f7f6f3;
   --color-bg-deep: #ebe9e3;
   --color-surface: #ffffff;
@@ -19,6 +22,38 @@
   --color-primary-dark: #25533d;
   --color-primary-light: #e7f0eb;
   --color-danger: #b4231d;
+
+  /* Color/status/* — fg (text) + bg (pill) per project status */
+  --color-status-draft-fg: #6b6560;
+  --color-status-draft-bg: #f7f6f3;
+  --color-status-submitted-fg: #2563eb;
+  --color-status-submitted-bg: #e7eefb;
+  --color-status-in-review-fg: #b45309;
+  --color-status-in-review-bg: #fbf0e2;
+  --color-status-approved-fg: #2f6f4f;
+  --color-status-approved-bg: #e7f0eb;
+
+  /* Spacing/* (px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  /* Radius/md */
+  --radius-md: 8px;
+}
+
+/* Expose the design tokens to Tailwind as semantic utilities (text-text,
+   bg-surface, border-border, text-primary, …) so components can reference the
+   design system instead of raw hex. */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-muted: var(--color-muted);
+  --color-primary: var(--color-primary);
 }
 
 @layer base {

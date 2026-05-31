@@ -2,7 +2,10 @@
 // SUV-towable tiny trailers. See ../../../../docs/prd.md for the product spec.
 //
 // Model (the redesigned "projects" IA): a client submits a Brief describing the
-// trailer they want. That becomes a Project. An assigned firm uploads Floorplan
+// trailer they want. That becomes a Project. If no equivalent standard build
+// already exists, the system can generate a rough 2D ConceptLayout (zones) as a
+// starting point for client/designer review — which must be APPROVED before the
+// project can go to production (build). An assigned firm uploads Floorplan
 // versions; client and designer discuss them via Comments; the client approves a
 // floorplan, which moves the Project to `approved`. Ops oversee everything from
 // an admin dashboard (all projects, firms, platform metrics).
@@ -67,8 +70,79 @@ export interface Project {
   galleryUrls: string[];
   floorplans: Floorplan[];
   comments: Comment[];
+  /**
+   * The rough 2D concept layout generated for this project's brief when no
+   * equivalent standard build exists, or null if none has been generated.
+   * Generating one is optional; it must be approved before the project can go to
+   * production (build).
+   */
+  conceptLayout: ConceptLayout | null;
   createdAt: string; // ISO date
   updatedAt: string; // ISO date
+}
+
+/** The functional zones a concept layout partitions the trailer envelope into. */
+export type ZoneKind = 'sleeping' | 'kitchenette' | 'bathroom' | 'storage' | 'entry';
+
+/** Display order + labels for the zones, shared by the generator and the SVG. */
+export const ZONE_LABELS: Record<ZoneKind, string> = {
+  entry: 'Entry',
+  kitchenette: 'Kitchenette',
+  bathroom: 'Bathroom',
+  storage: 'Storage',
+  sleeping: 'Sleeping area',
+};
+
+/**
+ * One zone rectangle, positioned in feet within the trailer envelope: x runs
+ * along the length (0 = front/hitch end), y across the width (0 = one side).
+ */
+export interface LayoutZone {
+  kind: ZoneKind;
+  x: number; // ft from the front
+  y: number; // ft from one side
+  width: number; // ft along the length
+  depth: number; // ft across the width
+}
+
+export type ConceptLayoutStatus =
+  | 'pending_review' // generated; awaiting client/designer approval
+  | 'approved' // approved — this is the gate that lets the project go to build
+  | 'rejected'; // rejected; can be regenerated
+
+/** How a concept layout was produced — useful for transparency in the UI. */
+export type ConceptLayoutSource = 'ai' | 'template';
+
+/**
+ * A rough, non-architectural 2D concept layout: a starting point for review, not
+ * a final drawing. Zones live inside an envelope of `lengthFt` × `widthFt` feet.
+ */
+export interface ConceptLayout {
+  id: string;
+  status: ConceptLayoutStatus;
+  source: ConceptLayoutSource;
+  /** Trailer envelope the zones are laid out within. */
+  lengthFt: number;
+  widthFt: number;
+  zones: LayoutZone[];
+  /** A short plain-language note on the zoning rationale. */
+  rationale: string;
+  createdAt: string; // ISO date
+  updatedAt: string; // ISO date
+}
+
+/**
+ * A standardized, already-engineered trailer build. When a client's brief
+ * matches one of these, no concept layout is needed — the project can go
+ * straight to production against the existing build.
+ */
+export interface StandardBuild {
+  id: string;
+  name: string;
+  lengthFt: number;
+  sleeps: number;
+  hasWetBath: boolean;
+  hasKitchenette: boolean;
 }
 
 /** A third-party design/build firm. */

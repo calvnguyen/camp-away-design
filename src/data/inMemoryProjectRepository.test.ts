@@ -92,4 +92,45 @@ describe('InMemoryProjectRepository', () => {
     const names = (await fresh.listProjects()).map((p) => p.clientName);
     expect(names).toContain('Persisted');
   });
+
+  describe('concept layout', () => {
+    it('reports an equivalent build for a standard brief', async () => {
+      // Project 1 (Maria & Jon): 17ft, sleeps 2, wet bath + kitchenette.
+      const build = await repo.findEquivalentBuild('1');
+      expect(build?.id).toBe('std-17-couple');
+    });
+
+    it('reports no equivalent build when none matches (sleeps 3)', async () => {
+      // Project 4 (Lena T.) sleeps 3 — no standard build.
+      expect(await repo.findEquivalentBuild('4')).toBeNull();
+    });
+
+    it('generates a pending concept layout for a no-match brief', async () => {
+      const layout = await repo.generateConceptLayout('4');
+      expect(layout.status).toBe('pending_review');
+      expect(layout.zones).toHaveLength(5);
+
+      const project = await repo.getProject('4');
+      expect(project?.conceptLayout?.id).toBe(layout.id);
+    });
+
+    it('refuses to generate a layout when an equivalent build exists', async () => {
+      await expect(repo.generateConceptLayout('1')).rejects.toThrow(/standard build/i);
+    });
+
+    it('approves a concept layout (the production gate)', async () => {
+      // Project 6 (Aria & Sky) ships with a pending concept layout.
+      const layout = await repo.approveConceptLayout('6');
+      expect(layout.status).toBe('approved');
+    });
+
+    it('rejects a concept layout so it can be regenerated', async () => {
+      const layout = await repo.rejectConceptLayout('6');
+      expect(layout.status).toBe('rejected');
+    });
+
+    it('throws when approving a project with no concept layout', async () => {
+      await expect(repo.approveConceptLayout('1')).rejects.toThrow(/no concept layout/i);
+    });
+  });
 });

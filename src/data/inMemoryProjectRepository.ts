@@ -4,16 +4,25 @@
 
 import type {
   Comment,
+  ConceptLayout,
   DashboardStats,
   Firm,
   Project,
   ProjectStatus,
+  StandardBuild,
 } from '../types';
 import {
   SEED_DASHBOARD_TOTALS,
   seedFirms,
   seedProjects,
 } from './fixtures';
+import { findEquivalentBuild } from '../lib/standardBuilds';
+import { envelopeFor } from '../lib/conceptLayout';
+import {
+  TemplateConceptLayoutGenerator,
+  toConceptLayout,
+} from './conceptLayoutGenerator';
+import type { ConceptLayoutGenerator } from './conceptLayoutGenerator';
 import type {
   CreateProjectInput,
   PostCommentInput,
@@ -42,8 +51,10 @@ function nextId(prefix: string): string {
 export class InMemoryProjectRepository implements ProjectRepository {
   private projects: Project[];
   private firms: Firm[];
+  private generator: ConceptLayoutGenerator;
 
-  constructor() {
+  constructor(generator: ConceptLayoutGenerator = new TemplateConceptLayoutGenerator()) {
+    this.generator = generator;
     this.firms = seedFirms();
     this.projects = this.load();
   }
@@ -102,6 +113,7 @@ export class InMemoryProjectRepository implements ProjectRepository {
       galleryUrls: [],
       floorplans: [],
       comments: [],
+      conceptLayout: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -146,6 +158,61 @@ export class InMemoryProjectRepository implements ProjectRepository {
     project.updatedAt = new Date().toISOString();
     this.save();
     return delay(clone(project));
+  }
+
+  async findEquivalentBuild(projectId: string): Promise<StandardBuild | null> {
+    const project = this.requireProject(projectId);
+    return delay(findEquivalentBuild(project.brief));
+  }
+
+  async generateConceptLayout(projectId: string): Promise<ConceptLayout> {
+    const project = this.requireProject(projectId);
+    if (findEquivalentBuild(project.brief)) {
+      throw new Error(
+        `Project ${projectId} matches a standard build — no concept layout needed.`,
+      );
+    }
+    // Generation can be slow (AI call); do it BEFORE the latency shim, and
+    // don't double-delay.
+    const envelope = envelopeFor(project.brief);
+    const generated = await this.generator.generate(project.brief);
+    const timestamp = new Date().toISOString();
+    const layout = toConceptLayout(generated, envelope, nextId('concept'), timestamp);
+    project.conceptLayout = layout;
+    project.updatedAt = timestamp;
+    this.save();
+    return clone(layout);
+  }
+
+  async approveConceptLayout(projectId: string): Promise<ConceptLayout> {
+    const layout = this.requireConceptLayout(projectId);
+    layout.status = 'approved';
+    layout.updatedAt = new Date().toISOString();
+    this.touch(projectId, layout.updatedAt);
+    this.save();
+    return delay(clone(layout));
+  }
+
+  async rejectConceptLayout(projectId: string): Promise<ConceptLayout> {
+    const layout = this.requireConceptLayout(projectId);
+    layout.status = 'rejected';
+    layout.updatedAt = new Date().toISOString();
+    this.touch(projectId, layout.updatedAt);
+    this.save();
+    return delay(clone(layout));
+  }
+
+  private requireConceptLayout(projectId: string): ConceptLayout {
+    const project = this.requireProject(projectId);
+    if (!project.conceptLayout) {
+      throw new Error(`Project ${projectId} has no concept layout.`);
+    }
+    return project.conceptLayout;
+  }
+
+  private touch(projectId: string, timestamp: string): void {
+    const project = this.requireProject(projectId);
+    project.updatedAt = timestamp;
   }
 
   async listFirms(): Promise<Firm[]> {

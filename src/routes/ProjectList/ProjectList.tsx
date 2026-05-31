@@ -5,6 +5,7 @@ import { Plus, Search, TrendingUp, Clock, CheckCircle2, Image as ImageIcon } fro
 import { projectRepository } from '../../data';
 import type { Project } from '../../types';
 import { AppNav } from '../../components/AppNav';
+import { Logo } from '../../components/Logo';
 import { ImageWithFallback } from '../../components/ImageWithFallback';
 import { PROJECT_STATUS_BADGE, briefSummary } from '../../lib/projectStatus';
 
@@ -68,7 +69,10 @@ export function ProjectList() {
       <main className="p-8 max-w-7xl mx-auto">
         {/* Hero */}
         <div className="mb-10">
-          <h1 className="text-5xl font-bold text-[#1c1a17] tracking-tight mb-3">CampAwayDesign</h1>
+          {/* The Logo's wordmark is the page's h1 (its SVG is decorative). */}
+          <h1 className="mb-4">
+            <Logo size="lg" />
+          </h1>
           <p className="text-[#6b6560] text-lg max-w-2xl">
             Affordable, SUV-towable tiny homes — from brief to approved floorplan.
           </p>

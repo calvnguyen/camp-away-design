@@ -3,6 +3,8 @@
 
 export const TRAILER_CONSTRAINTS = {
   trailerLengthFt: { min: 16, max: 18, default: 17 },
+  /** Interior width of a standard SUV-towable trailer (used by concept layouts). */
+  widthFt: 7,
   sleeps: { default: 2 },
   maxLoadedWeightLbs: 5_000,
   /** Small trailers must be buildable under this to stay quick + cheap (build-side ceiling). */

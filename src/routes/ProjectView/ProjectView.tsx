@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { projectRepository } from '../../data';
-import type { Firm, Project } from '../../types';
+import type { Firm, Project, StandardBuild } from '../../types';
 import { AppNav } from '../../components/AppNav';
 import { ImageWithFallback } from '../../components/ImageWithFallback';
+import { ConceptLayoutSection } from '../../components/ConceptLayoutSection';
 import { PROJECT_STATUS_BADGE, briefSummary, formatUsd } from '../../lib/projectStatus';
 
 const STATUS_PROGRESS: Record<Project['status'], number> = {
@@ -35,28 +36,37 @@ export function ProjectView() {
   const { id } = useParams();
   const [project, setProject] = useState<Project | null>(null);
   const [firm, setFirm] = useState<Firm | null>(null);
+  const [equivalentBuild, setEquivalentBuild] = useState<StandardBuild | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound' | 'error'>('loading');
 
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    setState('loading');
-    Promise.all([projectRepository.getProject(id), projectRepository.listFirms()])
-      .then(([proj, firms]) => {
-        if (!active) return;
+  const load = useCallback(
+    async (showLoading: boolean) => {
+      if (!id) return;
+      if (showLoading) setState('loading');
+      try {
+        const proj = await projectRepository.getProject(id);
         if (!proj) {
           setState('notfound');
           return;
         }
+        const [firms, build] = await Promise.all([
+          projectRepository.listFirms(),
+          projectRepository.findEquivalentBuild(id),
+        ]);
         setProject(proj);
         setFirm(firms.find((f) => f.id === proj.firmId) ?? null);
+        setEquivalentBuild(build);
         setState('ready');
-      })
-      .catch(() => active && setState('error'));
-    return () => {
-      active = false;
-    };
-  }, [id]);
+      } catch {
+        setState('error');
+      }
+    },
+    [id],
+  );
+
+  useEffect(() => {
+    void load(true);
+  }, [load]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
@@ -87,14 +97,26 @@ export function ProjectView() {
         )}
 
         {state === 'ready' && project && (
-          <ProjectBody project={project} firm={firm} />
+          <ProjectBody
+            project={project}
+            firm={firm}
+            equivalentBuild={equivalentBuild}
+            onReload={() => load(false)}
+          />
         )}
       </main>
     </div>
   );
 }
 
-function ProjectBody({ project, firm }: { project: Project; firm: Firm | null }) {
+interface ProjectBodyProps {
+  project: Project;
+  firm: Firm | null;
+  equivalentBuild: StandardBuild | null;
+  onReload: () => Promise<void>;
+}
+
+function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyProps) {
   const badge = PROJECT_STATUS_BADGE[project.status];
   const [hero, ...thumbs] = project.galleryUrls;
   const hasFloorplan = project.floorplans.length > 0;
@@ -140,8 +162,8 @@ function ProjectBody({ project, firm }: { project: Project; firm: Firm | null })
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Brief */}
-        <section className="lg:col-span-2 space-y-6" aria-label="Project brief">
+        {/* Brief + concept layout */}
+        <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-[#e3e0da] p-8 shadow-sm">
             <h2 className="text-2xl font-bold text-[#1c1a17] mb-6">Project Brief</h2>
             <dl className="divide-y divide-[#f7f6f3]">
@@ -164,7 +186,24 @@ function ProjectBody({ project, firm }: { project: Project; firm: Firm | null })
               </div>
             )}
           </div>
-        </section>
+
+          <ConceptLayoutSection
+            equivalentBuild={equivalentBuild}
+            layout={project.conceptLayout}
+            onGenerate={async () => {
+              await projectRepository.generateConceptLayout(project.id);
+              await onReload();
+            }}
+            onApprove={async () => {
+              await projectRepository.approveConceptLayout(project.id);
+              await onReload();
+            }}
+            onReject={async () => {
+              await projectRepository.rejectConceptLayout(project.id);
+              await onReload();
+            }}
+          />
+        </div>
 
         {/* Sidebar */}
         <aside className="space-y-6" aria-label="Project details">
