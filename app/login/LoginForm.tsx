@@ -58,7 +58,7 @@ export function LoginForm() {
         </div>
 
         <h1 className="text-xl font-semibold text-[#1c1a17] text-center mb-6">
-          {mode === 'signin' ? 'Sign in to Camp Away' : 'Create an account'}
+          {mode === 'signin' ? 'Please sign in' : 'Create an account'}
         </h1>
 
         {error && (
