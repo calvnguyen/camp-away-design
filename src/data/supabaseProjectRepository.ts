@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '../lib/supabase/client';
 import type {
   BathroomType,
@@ -216,11 +215,15 @@ const DEFAULT_THUMBNAIL =
 // ─── Repository ───────────────────────────────────────────────────────────────
 
 export class SupabaseProjectRepository implements ProjectRepository {
-  private db: SupabaseClient;
   private generator: ConceptLayoutGenerator;
 
+  // Getter so createClient() is called at query time (browser context with live
+  // session cookies), not once at module-init time where SSR has no cookie storage.
+  private get db(): ReturnType<typeof createClient> {
+    return createClient();
+  }
+
   constructor(generator: ConceptLayoutGenerator = new TemplateConceptLayoutGenerator()) {
-    this.db = createClient();
     this.generator = generator;
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { LayoutGrid, BarChart3, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
 import { useUser } from '@/lib/supabase/auth-context';
@@ -16,12 +16,11 @@ import { useUser } from '@/lib/supabase/auth-context';
  */
 export function AppNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { signOut } = useUser();
 
   async function handleSignOut() {
     await signOut();
-    router.push('/login');
+    window.location.href = '/login';
   }
 
   const dashboardActive = pathname.startsWith('/dashboard');
