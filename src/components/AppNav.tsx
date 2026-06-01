@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutGrid, BarChart3, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
-import { useUser } from '@/lib/supabase/auth-context';
+
 
 /**
  * Floating primary navigation: the brand logo (left) and two destinations —
@@ -16,11 +16,8 @@ import { useUser } from '@/lib/supabase/auth-context';
  */
 export function AppNav() {
   const pathname = usePathname();
-  const { signOut } = useUser();
-
-  async function handleSignOut() {
-    await signOut();
-    window.location.href = '/login';
+  function handleSignOut() {
+    window.location.href = '/auth/signout';
   }
 
   const dashboardActive = pathname.startsWith('/dashboard');
