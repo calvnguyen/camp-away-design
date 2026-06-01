@@ -8,6 +8,8 @@ interface ConceptLayout3DProps {
   layout: ConceptLayout;
   /** Live zone positions — updated in real-time as user drags in 2D view. */
   zones: LayoutZone[];
+  /** Override the container's className to control height (default: fixed 380px). */
+  className?: string;
 }
 
 const FLOOR_H    = 0.06;   // floor slab thickness (ft)
@@ -203,14 +205,14 @@ function Scene({ layout, zones }: { layout: ConceptLayout; zones: LayoutZone[] }
  * Receives live `zones` so it stays in sync as the user drags in the 2D view.
  * Accessibility: WebGL canvas is not AT-traversable — the 2D view remains available.
  */
-export function ConceptLayout3D({ layout, zones }: ConceptLayout3DProps) {
+export function ConceptLayout3D({ layout, zones, className }: ConceptLayout3DProps) {
   const { lengthFt: L, widthFt: W } = layout;
   const camX = L * 0.5, camY = L * 0.55, camZ = W * 3.0;
 
   return (
     <div
-      className="w-full rounded-2xl border border-[#e3e0da] bg-[#f4f2ee] overflow-hidden"
-      style={{ height: 380 }}
+      className={className ?? 'w-full rounded-2xl border border-[#e3e0da] bg-[#f4f2ee] overflow-hidden'}
+      style={className ? undefined : { height: 380 }}
       role="img"
       aria-label={`3D floor plan — ${L}ft × ${W}ft trailer. Drag to orbit, scroll to zoom.`}
     >

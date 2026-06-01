@@ -39,6 +39,11 @@ export interface ProjectRepository {
   assignFirm(projectId: string, firmId: string): Promise<Project>;
 
   // --- Floorplan review ---
+  /**
+   * Upload a new floorplan version for a project. Marks the previous current
+   * version as superseded. Returns the updated project.
+   */
+  uploadFloorplan(projectId: string, file: File, uploadedBy: string, label: string, revisionNote?: string): Promise<Project>;
   /** Append a comment to a project's review thread. */
   postComment(input: PostCommentInput): Promise<Comment>;
   /**
@@ -46,6 +51,8 @@ export interface ProjectRepository {
    * Throws if the project has no floorplan to approve.
    */
   approveCurrentFloorplan(projectId: string): Promise<Project>;
+  /** Client requests revisions: project → `revision_requested`. */
+  requestRevision(projectId: string): Promise<Project>;
 
   // --- Concept layout (no-equivalent-build path) ---
   /**

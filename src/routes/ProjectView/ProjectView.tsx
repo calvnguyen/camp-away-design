@@ -7,6 +7,7 @@ import { AppNav } from '../../components/AppNav';
 import { ImageWithFallback } from '../../components/ImageWithFallback';
 import { ConceptLayoutSection } from '../../components/ConceptLayoutSection';
 import { PROJECT_STATUS_BADGE, briefSummary } from '../../lib/projectStatus';
+import { useProjectRole, type ProjectRole } from '../../lib/projectRole';
 
 const BRIEF_LABELS = {
   sizeCategory: { small: 'Small (14–16 ft)', medium: 'Medium (17–20 ft)', large: 'Large (21–24 ft)' },
@@ -135,6 +136,7 @@ function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyPr
   const badge = PROJECT_STATUS_BADGE[project.status];
   const [hero, ...thumbs] = project.galleryUrls;
   const hasFloorplan = project.floorplans.length > 0;
+  const { role, setRole } = useProjectRole();
 
   return (
     <>
@@ -147,6 +149,29 @@ function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyPr
             </span>
           </div>
           <p className="text-[#6b6560] text-lg">{briefSummary(project.brief)}</p>
+        </div>
+
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <div
+            role="group"
+            aria-label="View as role"
+            className="flex items-center bg-white border border-[#e3e0da] rounded-xl p-1 gap-1 shadow-sm"
+          >
+            {(['designer', 'client'] as ProjectRole[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={role === r}
+                onClick={() => setRole(r)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
+                  role === r ? 'bg-[#1c1a17] text-white shadow-sm' : 'text-[#6b6560] hover:text-[#1c1a17]'
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-[#6b6560]">MVP demo — replaces auth in production</p>
         </div>
       </div>
 

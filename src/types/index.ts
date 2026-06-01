@@ -1,5 +1,5 @@
 // Shared domain types for CampAwayDesign — a design front-door for affordable,
-// SUV-towable tiny trailers. See ../../../../docs/prd.md for the product spec.
+// SUV-towable tiny trailers. See docs/prd/prd.md for the product spec.
 //
 // Model (the redesigned "projects" IA): a client submits a Brief describing the
 // trailer they want. That becomes a Project. If no equivalent standard build
@@ -67,6 +67,12 @@ export interface Floorplan {
   uploadedAt: string; // ISO date
   /** Human label shown on the canvas, e.g. "17ft Trailer Layout". */
   label: string;
+  /** Object URL (in-memory) or storage path (Supabase) for the uploaded file. */
+  fileUrl: string | null;
+  /** MIME type of the uploaded file — used to pick the right viewer. */
+  fileType: string | null;
+  /** Optional note from the designer describing what changed in this version. */
+  revisionNote: string | null;
 }
 
 export type CommentRole = 'client' | 'designer';

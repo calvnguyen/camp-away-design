@@ -149,6 +149,35 @@ export class InMemoryProjectRepository implements ProjectRepository {
     return delay(clone(comment));
   }
 
+  async uploadFloorplan(projectId: string, file: File, uploadedBy: string, label: string, revisionNote?: string): Promise<Project> {
+    const project = this.requireProject(projectId);
+    const fileUrl = URL.createObjectURL(file);
+    const nextVersion = project.floorplans.reduce((max, f) => Math.max(max, f.version), 0) + 1;
+    project.floorplans = project.floorplans.map((f) =>
+      f.status === 'current' ? { ...f, status: 'superseded' as const } : f,
+    );
+    project.floorplans = [
+      ...project.floorplans,
+      {
+        id: nextId('fp'),
+        version: nextVersion,
+        status: 'current',
+        uploadedBy,
+        uploadedAt: new Date().toISOString(),
+        label,
+        fileUrl,
+        fileType: file.type,
+        revisionNote: revisionNote ?? null,
+      },
+    ];
+    if (project.status === 'intake_submitted' || project.status === 'awaiting_concept') {
+      project.status = 'under_architect_review';
+    }
+    project.updatedAt = new Date().toISOString();
+    this.save();
+    return delay(clone(project));
+  }
+
   async approveCurrentFloorplan(projectId: string): Promise<Project> {
     const project = this.requireProject(projectId);
     const hasCurrent = project.floorplans.some((f) => f.status === 'current');
@@ -156,6 +185,14 @@ export class InMemoryProjectRepository implements ProjectRepository {
       throw new Error(`Project ${projectId} has no floorplan to approve.`);
     }
     project.status = 'approved';
+    project.updatedAt = new Date().toISOString();
+    this.save();
+    return delay(clone(project));
+  }
+
+  async requestRevision(projectId: string): Promise<Project> {
+    const project = this.requireProject(projectId);
+    project.status = 'revision_requested';
     project.updatedAt = new Date().toISOString();
     this.save();
     return delay(clone(project));
