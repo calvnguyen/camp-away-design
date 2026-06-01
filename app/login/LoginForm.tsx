@@ -2,7 +2,6 @@
 
 import { useId, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { UserRole } from '@/lib/supabase/auth-context';
 import { Logo } from '@/components/Logo';
 
 type Mode = 'signin' | 'signup';
@@ -17,9 +16,6 @@ const ROLE_OPTIONS: { value: SignupRole; label: string; description: string }[] 
   },
 ];
 
-function redirectPathForRole(role: UserRole): string {
-  return role === 'admin' ? '/dashboard' : '/';
-}
 
 export function LoginForm() {
   const supabase = createClient();
@@ -47,19 +43,11 @@ export function LoginForm() {
 
     try {
       if (mode === 'signin') {
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-
-        const role = (profile?.role as UserRole) ?? 'client';
-        // Hard redirect so the browser sends a fresh request with the new
-        // session cookie — avoids a race between cookie sync and middleware.
-        window.location.href = redirectPathForRole(role);
+        // Hard redirect — middleware checks the profile server-side and routes
+        // admin → /dashboard, others → /
+        window.location.href = '/login';
       } else {
         const { error: err } = await supabase.auth.signUp({
           email,

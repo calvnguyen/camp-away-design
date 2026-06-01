@@ -40,8 +40,16 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && pathname === '/login') {
+    // Check role server-side so the redirect is correct without a client-side
+    // REST call (which hangs due to browser client session init timing).
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    const role = (profile as { role?: string } | null)?.role ?? 'client';
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = role === 'admin' ? '/dashboard' : '/';
     return NextResponse.redirect(url);
   }
 
