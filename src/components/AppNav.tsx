@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutGrid, BarChart3 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutGrid, BarChart3, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
+import { useUser } from '@/lib/supabase/auth-context';
 
 /**
  * Floating primary navigation: the brand logo (left) and two destinations —
@@ -15,6 +16,13 @@ import { Logo } from './Logo';
  */
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useUser();
+
+  async function handleSignOut() {
+    await signOut();
+    router.push('/login');
+  }
 
   const dashboardActive = pathname.startsWith('/dashboard');
   // Everything that isn't the dashboard lives under the projects workspace.
@@ -58,6 +66,16 @@ export function AppNav() {
           Dashboard
         </Link>
       </nav>
+
+      <button
+        type="button"
+        onClick={handleSignOut}
+        aria-label="Sign out"
+        className="flex items-center gap-2 bg-white rounded-2xl border border-[#e3e0da] px-4 py-3 shadow-lg hover:shadow-xl transition-shadow text-[#6b6560] hover:text-[#1c1a17] focus:outline-none focus:ring-2 focus:ring-[#2f6f4f]"
+      >
+        <LogOut className="w-4 h-4" aria-hidden="true" />
+        <span className="text-sm font-medium">Sign out</span>
+      </button>
     </div>
   );
 }
