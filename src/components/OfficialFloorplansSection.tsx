@@ -98,7 +98,7 @@ export function OfficialFloorplansSection({
   }
 
   return (
-    <div className="space-y-6">
+    <div id="official-floorplans" className="space-y-6">
       {/* Section header */}
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-bold text-[#1c1a17]">Official Floorplans</h2>

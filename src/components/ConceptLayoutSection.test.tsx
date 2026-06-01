@@ -23,10 +23,10 @@ function layout(status: ConceptLayout['status']): ConceptLayout {
 const build: StandardBuild = {
   id: 'std-17-couple',
   name: 'Standard 17 — Couple',
-  lengthFt: 17,
+  sizeCategory: 'medium',
   sleeps: 2,
-  hasWetBath: true,
-  hasKitchenette: true,
+  bathroomType: 'wet_bath',
+  kitchenType: 'standard',
 };
 
 const noop = () => Promise.resolve();

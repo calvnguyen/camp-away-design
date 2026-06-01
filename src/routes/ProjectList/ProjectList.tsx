@@ -24,8 +24,8 @@ function matchesQuery(project: Project, q: string): boolean {
   const haystack = [
     project.clientName,
     PROJECT_STATUS_BADGE[project.status].label,
-    String(project.brief.budgetUsd),
-    `${project.brief.trailerLengthFt} ft`,
+    project.brief.budgetRange,
+    project.brief.sizeCategory,
   ]
     .join(' ')
     .toLowerCase();
@@ -52,7 +52,7 @@ export function ProjectList() {
     const list = projects ?? [];
     return {
       total: list.length,
-      inProgress: list.filter((p) => p.status === 'submitted' || p.status === 'in_review').length,
+      inProgress: list.filter((p) => p.status === 'intake_submitted' || p.status === 'under_architect_review').length,
       completed: list.filter((p) => p.status === 'approved').length,
     };
   }, [projects]);

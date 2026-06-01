@@ -40,7 +40,7 @@ export function ConceptLayoutSection({
   const [busy, setBusy] = useState<null | 'generate' | 'approve' | 'reject' | 'skip'>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(action: 'generate' | 'approve' | 'reject', fn: () => Promise<void>) {
+  async function run(action: 'generate' | 'approve' | 'reject' | 'skip', fn: () => Promise<void>) {
     setError(null);
     setBusy(action);
     try {
@@ -80,7 +80,7 @@ export function ConceptLayoutSection({
       ) : layout ? (
         <ApprovedAwareLayout
           layout={layout}
-          busy={busy}
+          busy={busy === 'skip' ? null : busy}
           onApprove={() => run('approve', onApprove)}
           onReject={() => run('reject', onReject)}
           onRegenerate={() => run('generate', onGenerate)}

@@ -29,10 +29,6 @@ export function envelopeFor(brief: Pick<TrailerBrief, 'sizeCategory'>): ConceptE
   return { lengthFt: spec.envelopeLengthFt, widthFt: spec.widthFt };
 }
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
 function round(n: number): number {
   return Math.round(n * 100) / 100;
 }

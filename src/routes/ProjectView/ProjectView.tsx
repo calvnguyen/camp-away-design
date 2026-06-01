@@ -6,6 +6,7 @@ import type { Firm, Project, StandardBuild } from '../../types';
 import { AppNav } from '../../components/AppNav';
 import { ImageWithFallback } from '../../components/ImageWithFallback';
 import { ConceptLayoutSection } from '../../components/ConceptLayoutSection';
+import { OfficialFloorplansSection } from '../../components/OfficialFloorplansSection';
 import { PROJECT_STATUS_BADGE, briefSummary } from '../../lib/projectStatus';
 import { useProjectRole, type ProjectRole } from '../../lib/projectRole';
 
@@ -118,6 +119,7 @@ export function ProjectView() {
             firm={firm}
             equivalentBuild={equivalentBuild}
             onReload={() => load(false)}
+            onProjectChange={setProject}
           />
         )}
       </main>
@@ -130,9 +132,10 @@ interface ProjectBodyProps {
   firm: Firm | null;
   equivalentBuild: StandardBuild | null;
   onReload: () => Promise<void>;
+  onProjectChange: (updated: Project) => void;
 }
 
-function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyProps) {
+function ProjectBody({ project, firm, equivalentBuild, onReload, onProjectChange }: ProjectBodyProps) {
   const badge = PROJECT_STATUS_BADGE[project.status];
   const [hero, ...thumbs] = project.galleryUrls;
   const hasFloorplan = project.floorplans.length > 0;
@@ -245,22 +248,24 @@ function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyPr
               void projectRepository.updateConceptLayoutZones(project.id, zones);
             }}
           />
+
+          <OfficialFloorplansSection
+            project={project}
+            role={role}
+            onProjectChange={onProjectChange}
+          />
         </div>
 
         {/* Sidebar */}
         <aside className="space-y-6" aria-label="Project details">
           <div className="bg-gradient-to-br from-[#2f6f4f] to-[#25533d] rounded-2xl p-6 shadow-lg text-white">
             <h2 className="font-bold text-lg mb-4">Quick actions</h2>
-            {hasFloorplan ? (
-              <Link
-                to={`/review/${project.id}`}
-                className="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-3 rounded-lg transition-colors font-medium"
-              >
-                View floorplan
-              </Link>
-            ) : (
-              <p className="text-white/80 text-sm">No floorplan uploaded yet.</p>
-            )}
+            <a
+              href="#official-floorplans"
+              className="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm px-4 py-3 rounded-lg transition-colors font-medium"
+            >
+              {hasFloorplan ? 'View floorplans' : 'Upload floorplan'}
+            </a>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#e3e0da] p-6 shadow-sm">

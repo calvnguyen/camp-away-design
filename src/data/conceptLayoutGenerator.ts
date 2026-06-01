@@ -143,9 +143,9 @@ export class ClaudeConceptLayoutGenerator implements ConceptLayoutGenerator {
     return [
       `Envelope: ${envelope.lengthFt} ft long x ${envelope.widthFt} ft wide.`,
       `Sleeps: ${brief.sleeps} adults.`,
-      `Wet bath: ${brief.hasWetBath ? 'yes' : 'no'}.`,
-      `Kitchenette: ${brief.hasKitchenette ? 'yes' : 'no'}.`,
-      `Solar: ${brief.solar ? 'yes' : 'no'}. Battery: ${brief.battery ? 'yes' : 'no'}.`,
+      `Bathroom: ${brief.bathroomType}.`,
+      `Kitchen: ${brief.kitchenType}.`,
+      `Solar: ${brief.powerOptions.includes('solar') ? 'yes' : 'no'}. Battery: ${brief.powerOptions.includes('battery') ? 'yes' : 'no'}.`,
       brief.notes ? `Client notes: ${brief.notes}` : 'No extra notes.',
       '',
       `Lay out the five required zones (${REQUIRED_ZONES.join(', ')}) within the envelope.`,
