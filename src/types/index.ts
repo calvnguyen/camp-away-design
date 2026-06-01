@@ -184,6 +184,55 @@ export interface Firm {
   activeProjects: number;
 }
 
+// ─── Booking ──────────────────────────────────────────────────────────────────
+
+export type BookingStatus =
+  | 'draft'               // started, not submitted
+  | 'booking_requested'   // client submitted the request
+  | 'pending_review'      // admin is reviewing
+  | 'booking_confirmed'   // approved by admin
+  | 'declined'            // declined
+  | 'cancelled';          // cancelled by client or admin
+
+export interface Booking {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  trailerSize: TrailerSizeCategory;
+  startDate: string;     // ISO date (YYYY-MM-DD)
+  endDate: string;       // ISO date (YYYY-MM-DD)
+  nights: number;
+  nightlyRateUsd: number;
+  upgradeIds: string[];  // references RENTAL_UPGRADES[].id
+  upgradesTotalUsd: number;
+  rentalTotalUsd: number;
+  isCustomConcept: boolean;
+  conceptPackageId: string | null;
+  offGridNotes: string;
+  customizationNotes: string;
+  specialNotes: string;
+  status: BookingStatus;
+  adminNotes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBookingInput {
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  trailerSize: TrailerSizeCategory;
+  startDate: string;
+  endDate: string;
+  upgradeIds: string[];
+  isCustomConcept: boolean;
+  conceptPackageId: string | null;
+  offGridNotes: string;
+  customizationNotes: string;
+  specialNotes: string;
+}
+
 /** Aggregate platform metrics for the admin dashboard. */
 export interface DashboardStats {
   activeProjects: number;

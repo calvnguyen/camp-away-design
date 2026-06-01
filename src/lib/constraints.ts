@@ -16,6 +16,10 @@ export interface SizeCategorySpec {
   towVehicle: string;
   minWeightLbs: number;
   maxWeightLbs: number;
+  /** Demo nightly rental rate in USD. */
+  nightlyRateUsd: number;
+  /** Estimated base custom build price in USD. */
+  baseBuildPriceUsd: number;
 }
 
 export const TRAILER_SIZE_CATEGORIES: Record<TrailerSizeCategory, SizeCategorySpec> = {
@@ -29,6 +33,8 @@ export const TRAILER_SIZE_CATEGORIES: Record<TrailerSizeCategory, SizeCategorySp
     towVehicle: 'Midsize SUV',
     minWeightLbs: 3_000,
     maxWeightLbs: 4_500,
+    nightlyRateUsd: 129,
+    baseBuildPriceUsd: 35_000,
   },
   medium: {
     label: 'Medium (17–20 ft)',
@@ -40,6 +46,8 @@ export const TRAILER_SIZE_CATEGORIES: Record<TrailerSizeCategory, SizeCategorySp
     towVehicle: 'Large SUV / Light Truck',
     minWeightLbs: 4_500,
     maxWeightLbs: 6_500,
+    nightlyRateUsd: 179,
+    baseBuildPriceUsd: 50_000,
   },
   large: {
     label: 'Large (21–24 ft)',
@@ -51,6 +59,8 @@ export const TRAILER_SIZE_CATEGORIES: Record<TrailerSizeCategory, SizeCategorySp
     towVehicle: 'Full-Size Truck / Heavy SUV',
     minWeightLbs: 6_500,
     maxWeightLbs: 9_000,
+    nightlyRateUsd: 229,
+    baseBuildPriceUsd: 75_000,
   },
 };
 
@@ -67,3 +77,53 @@ export const SLEEP_OPTIONS: { value: number; label: string }[] = [
   { value: 4, label: '4 People' },
   { value: 6, label: '5–6 People' },
 ];
+
+// ─── Rental upgrade pricing ───────────────────────────────────────────────────
+
+export interface UpgradeOption {
+  id: string;
+  label: string;
+  priceUsd: number;
+}
+
+export const RENTAL_UPGRADES: UpgradeOption[] = [
+  { id: 'solar', label: 'Solar Package', priceUsd: 4_000 },
+  { id: 'battery', label: 'Off-Grid Battery System', priceUsd: 6_000 },
+  { id: 'premium_interior', label: 'Premium Interior Finish', priceUsd: 5_000 },
+  { id: 'storage', label: 'Expanded Storage Package', priceUsd: 2_500 },
+  { id: 'roof_rack', label: 'Roof Rack / Outdoor Package', priceUsd: 1_500 },
+  { id: 'exterior_wrap', label: 'Custom Exterior Wrap', priceUsd: 3_000 },
+];
+
+// ─── Concept consultation pricing ────────────────────────────────────────────
+
+export interface ConceptPackage {
+  id: string;
+  label: string;
+  priceUsd: number;
+  description: string;
+}
+
+export const CONCEPT_PACKAGES: ConceptPackage[] = [
+  {
+    id: 'basic',
+    label: 'Basic AI Concept Layout',
+    priceUsd: 199,
+    description: 'AI-generated zone layout with rationale',
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced Concept Package',
+    priceUsd: 499,
+    description: 'AI layout + designer review and two revision rounds',
+  },
+  {
+    id: 'premium',
+    label: 'Premium Custom Concept Study',
+    priceUsd: 999,
+    description: 'Full bespoke study with unlimited revisions and final design spec',
+  },
+];
+
+export const PRICING_DISCLAIMER =
+  'Pricing shown is estimate-only for demo purposes. Final pricing determined after architect/designer review.';

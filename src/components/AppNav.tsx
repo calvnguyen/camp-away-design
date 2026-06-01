@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, BarChart3, LogOut } from 'lucide-react';
+import { LayoutGrid, BarChart3, Caravan, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
 
 
@@ -21,8 +21,8 @@ export function AppNav() {
   }
 
   const dashboardActive = pathname.startsWith('/dashboard');
-  // Everything that isn't the dashboard lives under the projects workspace.
-  const projectsActive = !dashboardActive;
+  const trailersActive = pathname.startsWith('/trailers') || pathname.startsWith('/book');
+  const projectsActive = !dashboardActive && !trailersActive;
 
   const linkClass = (active: boolean) =>
     [
@@ -52,6 +52,14 @@ export function AppNav() {
         >
           <LayoutGrid className="w-4 h-4" aria-hidden="true" />
           Projects
+        </Link>
+        <Link
+          href="/trailers"
+          aria-current={trailersActive ? 'page' : undefined}
+          className={linkClass(trailersActive)}
+        >
+          <Caravan className="w-4 h-4" aria-hidden="true" />
+          Rentals
         </Link>
         <Link
           href="/dashboard"
