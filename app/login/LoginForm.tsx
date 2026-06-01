@@ -3,9 +3,24 @@
 import { useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import type { UserRole } from '@/lib/supabase/auth-context';
 import { Logo } from '@/components/Logo';
 
 type Mode = 'signin' | 'signup';
+type SignupRole = 'client' | 'designer';
+
+const ROLE_OPTIONS: { value: SignupRole; label: string; description: string }[] = [
+  { value: 'client', label: 'Client', description: 'Design and track your trailer rental' },
+  {
+    value: 'designer',
+    label: 'Designer / Architect',
+    description: 'Review and deliver floorplan designs',
+  },
+];
+
+function redirectPathForRole(role: UserRole): string {
+  return role === 'admin' ? '/dashboard' : '/';
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -14,11 +29,13 @@ export function LoginForm() {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signupRole, setSignupRole] = useState<SignupRole>('client');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const emailId = useId();
   const passwordId = useId();
+  const roleGroupId = useId();
   const errorId = useId();
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -29,12 +46,24 @@ export function LoginForm() {
 
     try {
       if (mode === 'signin') {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-        router.push('/');
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        const role = (profile?.role as UserRole) ?? 'client';
+        router.push(redirectPathForRole(role));
         router.refresh();
       } else {
-        const { error: err } = await supabase.auth.signUp({ email, password });
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { role: signupRole } },
+        });
         if (err) throw err;
         setError('Check your email for a confirmation link, then sign in.');
         setMode('signin');
@@ -48,7 +77,7 @@ export function LoginForm() {
     }
   }
 
-  const fieldError = error && mode === 'signin' ? error : null;
+  const isSigninError = error && mode === 'signin';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f7f6f3] px-4">
@@ -72,6 +101,43 @@ export function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} noValidate>
+          {mode === 'signup' && (
+            <fieldset className="mb-5">
+              <legend
+                id={roleGroupId}
+                className="block text-sm font-medium text-[#1c1a17] mb-2"
+              >
+                What type of account are you creating?
+              </legend>
+              <div className="flex flex-col gap-2" role="radiogroup" aria-labelledby={roleGroupId}>
+                {ROLE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={[
+                      'flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all',
+                      signupRole === opt.value
+                        ? 'border-[#2f6f4f] bg-[#f0f7f3] ring-1 ring-[#2f6f4f]'
+                        : 'border-[#e3e0da] hover:border-[#2f6f4f]/40',
+                    ].join(' ')}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={opt.value}
+                      checked={signupRole === opt.value}
+                      onChange={() => setSignupRole(opt.value)}
+                      className="mt-0.5 accent-[#2f6f4f] focus:ring-2 focus:ring-[#2f6f4f]"
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-[#1c1a17]">{opt.label}</span>
+                      <span className="text-xs text-[#6b6560]">{opt.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
           <div className="mb-4">
             <label htmlFor={emailId} className="block text-sm font-medium text-[#1c1a17] mb-1">
               Email
@@ -84,8 +150,8 @@ export function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={fieldError ? true : undefined}
-              aria-describedby={fieldError ? errorId : undefined}
+              aria-invalid={isSigninError ? true : undefined}
+              aria-describedby={isSigninError ? errorId : undefined}
               className="w-full rounded-xl border border-[#e3e0da] px-3 py-2.5 text-sm text-[#1c1a17] bg-white placeholder:text-[#6b6560] focus:outline-none focus:ring-2 focus:ring-[#2f6f4f] aria-[invalid=true]:border-red-400 aria-[invalid=true]:ring-red-300"
               placeholder="you@example.com"
             />
@@ -102,8 +168,8 @@ export function LoginForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={fieldError ? true : undefined}
-              aria-describedby={fieldError ? errorId : undefined}
+              aria-invalid={isSigninError ? true : undefined}
+              aria-describedby={isSigninError ? errorId : undefined}
               className="w-full rounded-xl border border-[#e3e0da] px-3 py-2.5 text-sm text-[#1c1a17] bg-white placeholder:text-[#6b6560] focus:outline-none focus:ring-2 focus:ring-[#2f6f4f] aria-[invalid=true]:border-red-400 aria-[invalid=true]:ring-red-300"
               placeholder={mode === 'signin' ? '••••••••' : 'At least 6 characters'}
             />
