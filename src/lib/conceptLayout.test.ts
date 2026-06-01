@@ -5,33 +5,34 @@ import {
   templateLayout,
   validateLayout,
 } from './conceptLayout';
-import { TRAILER_CONSTRAINTS } from './constraints';
+import { TRAILER_SIZE_CATEGORIES } from './constraints';
 import type { LayoutZone } from '../types';
 
 describe('envelopeFor', () => {
-  it('clamps the length into the SUV-towable range', () => {
-    expect(envelopeFor({ trailerLengthFt: 24 }).lengthFt).toBe(TRAILER_CONSTRAINTS.trailerLengthFt.max);
-    expect(envelopeFor({ trailerLengthFt: 10 }).lengthFt).toBe(TRAILER_CONSTRAINTS.trailerLengthFt.min);
-    expect(envelopeFor({ trailerLengthFt: 17 }).lengthFt).toBe(17);
+  it('returns the envelope length for each size category', () => {
+    for (const [cat, spec] of Object.entries(TRAILER_SIZE_CATEGORIES)) {
+      expect(envelopeFor({ sizeCategory: cat as 'small' | 'medium' | 'large' }).lengthFt)
+        .toBe(spec.envelopeLengthFt);
+    }
   });
 
-  it('uses the standard interior width', () => {
-    expect(envelopeFor({ trailerLengthFt: 17 }).widthFt).toBe(TRAILER_CONSTRAINTS.widthFt);
+  it('uses the per-category interior width', () => {
+    expect(envelopeFor({ sizeCategory: 'small' }).widthFt).toBe(TRAILER_SIZE_CATEGORIES.small.widthFt);
+    expect(envelopeFor({ sizeCategory: 'large' }).widthFt).toBe(TRAILER_SIZE_CATEGORIES.large.widthFt);
   });
 });
 
 describe('templateLayout', () => {
   it('includes every required zone exactly once', () => {
-    const zones = templateLayout(envelopeFor({ trailerLengthFt: 17 }));
+    const zones = templateLayout(envelopeFor({ sizeCategory: 'medium' }));
     const kinds = zones.map((z) => z.kind).sort();
     expect(kinds).toEqual([...REQUIRED_ZONES].sort());
   });
 
   it('produces a layout that fills the envelope and passes validation', () => {
-    const envelope = envelopeFor({ trailerLengthFt: 18 });
+    const envelope = envelopeFor({ sizeCategory: 'medium' });
     const zones = templateLayout(envelope);
     expect(validateLayout(zones, envelope).ok).toBe(true);
-    // The zones span the full length front-to-back.
     const covered = zones.reduce((sum, z) => sum + z.width, 0);
     expect(covered).toBeCloseTo(envelope.lengthFt, 1);
   });

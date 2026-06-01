@@ -6,7 +6,7 @@ import type { ConceptLayout, StandardBuild } from '../types';
 import { envelopeFor, templateLayout, templateRationale } from '../lib/conceptLayout';
 
 function layout(status: ConceptLayout['status']): ConceptLayout {
-  const envelope = envelopeFor({ trailerLengthFt: 18 });
+  const envelope = envelopeFor({ sizeCategory: 'medium' });
   return {
     id: 'concept-1',
     status,
@@ -42,7 +42,7 @@ describe('ConceptLayoutSection', () => {
         onReject={noop}
       />,
     );
-    expect(screen.getByText(/matches/i)).toBeInTheDocument();
+    expect(screen.getByText(/matches a standard build/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /generate/i })).not.toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe('ConceptLayoutSection', () => {
       />,
     );
     // The diagram exposes an accessible name.
-    expect(screen.getByRole('img', { name: /concept layout for a/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /concept layout/i })).toBeInTheDocument();
     expect(screen.getByText(/pending review/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /approve for production/i }));

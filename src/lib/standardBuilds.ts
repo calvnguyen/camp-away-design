@@ -7,26 +7,27 @@ import type { StandardBuild, TrailerBrief } from '../types';
 
 /** The standard SUV-towable builds the fleet already knows how to make. */
 export const STANDARD_BUILDS: StandardBuild[] = [
-  { id: 'std-16-couple', name: 'Standard 16 — Couple', lengthFt: 16, sleeps: 2, hasWetBath: true, hasKitchenette: true },
-  { id: 'std-17-couple', name: 'Standard 17 — Couple', lengthFt: 17, sleeps: 2, hasWetBath: true, hasKitchenette: true },
-  { id: 'std-18-couple', name: 'Standard 18 — Couple', lengthFt: 18, sleeps: 2, hasWetBath: true, hasKitchenette: true },
+  { id: 'std-small-couple', name: 'Standard Small — Couple', sizeCategory: 'small', sleeps: 2, bathroomType: 'wet_bath', kitchenType: 'standard' },
+  { id: 'std-medium-couple', name: 'Standard Medium — Couple', sizeCategory: 'medium', sleeps: 2, bathroomType: 'wet_bath', kitchenType: 'standard' },
+  { id: 'std-medium-family', name: 'Standard Medium — Family', sizeCategory: 'medium', sleeps: 4, bathroomType: 'wet_bath', kitchenType: 'standard' },
+  { id: 'std-large-family', name: 'Standard Large — Family', sizeCategory: 'large', sleeps: 4, bathroomType: 'wet_bath', kitchenType: 'extended_storage' },
+  { id: 'std-large-extended', name: 'Standard Large — Extended', sizeCategory: 'large', sleeps: 6, bathroomType: 'wet_bath', kitchenType: 'extended_storage' },
 ];
 
 /**
- * Find a standard build equivalent to the brief: same length, same sleeping
- * capacity, and the same wet-bath / kitchenette decisions. Optional upgrades
- * (solar, battery) are bolt-ons that don't change the layout, so they're
- * ignored. Returns the matching build, or null when none fits — that null is
- * what makes a concept layout relevant.
+ * Find a standard build equivalent to the brief: same size category, same
+ * sleeping capacity, same bathroom type, and same kitchen type. Power options,
+ * design style, and usage intent are bolt-ons that don't affect layout.
+ * Returns the matching build, or null — that null makes a concept layout relevant.
  */
 export function findEquivalentBuild(brief: TrailerBrief): StandardBuild | null {
   return (
     STANDARD_BUILDS.find(
       (b) =>
-        b.lengthFt === brief.trailerLengthFt &&
+        b.sizeCategory === brief.sizeCategory &&
         b.sleeps === brief.sleeps &&
-        b.hasWetBath === brief.hasWetBath &&
-        b.hasKitchenette === brief.hasKitchenette,
+        b.bathroomType === brief.bathroomType &&
+        b.kitchenType === brief.kitchenType,
     ) ?? null
   );
 }

@@ -9,6 +9,7 @@ import type {
   ConceptLayout,
   DashboardStats,
   Firm,
+  LayoutZone,
   Project,
   StandardBuild,
   TrailerBrief,
@@ -65,6 +66,12 @@ export interface ProjectRepository {
   approveConceptLayout(projectId: string): Promise<ConceptLayout>;
   /** Reject the concept layout so it can be regenerated. Throws if none exists. */
   rejectConceptLayout(projectId: string): Promise<ConceptLayout>;
+  /**
+   * Persist updated zone positions after a user drag/keyboard edit.
+   * Validates that each zone stays within the envelope; throws if not.
+   * Throws if the project has no concept layout.
+   */
+  updateConceptLayoutZones(projectId: string, zones: LayoutZone[]): Promise<ConceptLayout>;
 
   // --- Firms & metrics ---
   listFirms(): Promise<Firm[]>;

@@ -2,6 +2,15 @@ import '@testing-library/jest-dom';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
+// @react-three/fiber uses ResizeObserver internally; jsdom doesn't ship one.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Unmount React trees between tests so rendered DOM doesn't leak across cases.
 afterEach(() => cleanup());
 

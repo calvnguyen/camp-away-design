@@ -7,6 +7,7 @@ import type {
   ConceptLayout,
   DashboardStats,
   Firm,
+  LayoutZone,
   Project,
   ProjectStatus,
   StandardBuild,
@@ -17,7 +18,7 @@ import {
   seedProjects,
 } from './fixtures';
 import { findEquivalentBuild } from '../lib/standardBuilds';
-import { envelopeFor } from '../lib/conceptLayout';
+import { envelopeFor, validateLayout } from '../lib/conceptLayout';
 import {
   TemplateConceptLayoutGenerator,
   toConceptLayout,
@@ -29,7 +30,7 @@ import type {
   ProjectRepository,
 } from './types';
 
-const STORAGE_KEY = 'campaway.projects.v1';
+const STORAGE_KEY = 'campaway.projects.v2';
 /** Small simulated latency so loading states are exercised in dev. */
 const LATENCY_MS = 120;
 
@@ -106,7 +107,7 @@ export class InMemoryProjectRepository implements ProjectRepository {
       id: nextId('project'),
       clientName: input.clientName,
       brief: input.brief,
-      status: input.submit ? 'submitted' : 'draft',
+      status: input.submit ? 'intake_submitted' : 'draft',
       firmId: null,
       thumbnailUrl:
         'https://images.unsplash.com/photo-1604549001484-df28edea610b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
@@ -202,6 +203,21 @@ export class InMemoryProjectRepository implements ProjectRepository {
     return delay(clone(layout));
   }
 
+  async updateConceptLayoutZones(projectId: string, zones: LayoutZone[]): Promise<ConceptLayout> {
+    const project = this.requireProject(projectId);
+    const layout = this.requireConceptLayout(projectId);
+    const envelope = envelopeFor(project.brief);
+    const result = validateLayout(zones, envelope);
+    if (!result.ok) {
+      throw new Error(`Invalid zone positions: ${result.errors.join('; ')}`);
+    }
+    layout.zones = zones;
+    layout.updatedAt = new Date().toISOString();
+    this.touch(projectId, layout.updatedAt);
+    this.save();
+    return delay(clone(layout));
+  }
+
   private requireConceptLayout(projectId: string): ConceptLayout {
     const project = this.requireProject(projectId);
     if (!project.conceptLayout) {
@@ -234,4 +250,10 @@ export class InMemoryProjectRepository implements ProjectRepository {
 }
 
 /** Status values that count as "in progress" for high-level counts. */
-export const IN_PROGRESS_STATUSES: ProjectStatus[] = ['submitted', 'in_review'];
+export const IN_PROGRESS_STATUSES: ProjectStatus[] = [
+  'intake_submitted',
+  'awaiting_concept',
+  'concept_generated',
+  'under_architect_review',
+  'revision_requested',
+];

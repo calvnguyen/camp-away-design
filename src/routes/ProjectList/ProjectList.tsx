@@ -66,7 +66,7 @@ export function ProjectList() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="p-8 max-w-7xl mx-auto">
+      <main className="px-8 pb-8 pt-24 max-w-7xl mx-auto">
         {/* Hero */}
         <div className="mb-10">
           {/* The Logo's wordmark is the page's h1 (its SVG is decorative). */}

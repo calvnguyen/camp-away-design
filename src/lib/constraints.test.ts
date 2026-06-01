@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { TRAILER_CONSTRAINTS, validateRequirements } from './constraints';
+import { TRAILER_SIZE_CATEGORIES } from './constraints';
 
-describe('validateRequirements', () => {
-  it('accepts a length within the small-trailer range', () => {
-    const errors = validateRequirements({
-      trailerLengthFt: TRAILER_CONSTRAINTS.trailerLengthFt.default,
-    });
-    expect(errors).toEqual({});
+describe('TRAILER_SIZE_CATEGORIES', () => {
+  it('has entries for small, medium, and large', () => {
+    expect(TRAILER_SIZE_CATEGORIES.small).toBeDefined();
+    expect(TRAILER_SIZE_CATEGORIES.medium).toBeDefined();
+    expect(TRAILER_SIZE_CATEGORIES.large).toBeDefined();
   });
 
-  it('flags a trailer length outside 16–18 ft', () => {
-    expect(validateRequirements({ trailerLengthFt: 22 }).trailerLengthFt).toBeDefined();
-    expect(validateRequirements({ trailerLengthFt: 12 }).trailerLengthFt).toBeDefined();
+  it('envelope lengths fall within their length ranges', () => {
+    for (const [, spec] of Object.entries(TRAILER_SIZE_CATEGORIES)) {
+      expect(spec.envelopeLengthFt).toBeGreaterThanOrEqual(spec.minLengthFt);
+      expect(spec.envelopeLengthFt).toBeLessThanOrEqual(spec.maxLengthFt);
+    }
+  });
+
+  it('weight ranges are ordered low-to-high across categories', () => {
+    expect(TRAILER_SIZE_CATEGORIES.small.maxWeightLbs).toBeLessThanOrEqual(TRAILER_SIZE_CATEGORIES.medium.minWeightLbs);
+    expect(TRAILER_SIZE_CATEGORIES.medium.maxWeightLbs).toBeLessThanOrEqual(TRAILER_SIZE_CATEGORIES.large.minWeightLbs);
   });
 });

@@ -4,13 +4,15 @@ import type { TrailerBrief } from '../types';
 
 function brief(overrides: Partial<TrailerBrief> = {}): TrailerBrief {
   return {
-    trailerLengthFt: 17,
+    sizeCategory: 'medium',
     sleeps: 2,
-    hasWetBath: true,
-    hasKitchenette: true,
-    solar: false,
-    battery: false,
-    budgetUsd: 45_000,
+    bathroomType: 'wet_bath',
+    kitchenType: 'standard',
+    powerOptions: [],
+    intendedUsage: 'weekend',
+    towVehicle: 'suv',
+    budgetRange: '40k_50k',
+    designStyle: 'modern',
     notes: '',
     ...overrides,
   };
@@ -32,7 +34,7 @@ describe('InMemoryProjectRepository', () => {
 
   it('creates a submitted project from a brief', async () => {
     const project = await repo.createProject({ clientName: 'Ada L.', brief: brief(), submit: true });
-    expect(project.status).toBe('submitted');
+    expect(project.status).toBe('intake_submitted');
     expect(project.clientName).toBe('Ada L.');
 
     const fetched = await repo.getProject(project.id);
@@ -95,9 +97,9 @@ describe('InMemoryProjectRepository', () => {
 
   describe('concept layout', () => {
     it('reports an equivalent build for a standard brief', async () => {
-      // Project 1 (Maria & Jon): 17ft, sleeps 2, wet bath + kitchenette.
+      // Project 1 (Maria & Jon): medium, sleeps 2, wet bath + standard kitchen.
       const build = await repo.findEquivalentBuild('1');
-      expect(build?.id).toBe('std-17-couple');
+      expect(build?.id).toBe('std-medium-couple');
     });
 
     it('reports no equivalent build when none matches (sleeps 3)', async () => {

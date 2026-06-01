@@ -6,13 +6,28 @@ import type { Firm, Project, StandardBuild } from '../../types';
 import { AppNav } from '../../components/AppNav';
 import { ImageWithFallback } from '../../components/ImageWithFallback';
 import { ConceptLayoutSection } from '../../components/ConceptLayoutSection';
-import { PROJECT_STATUS_BADGE, briefSummary, formatUsd } from '../../lib/projectStatus';
+import { PROJECT_STATUS_BADGE, briefSummary } from '../../lib/projectStatus';
+
+const BRIEF_LABELS = {
+  sizeCategory: { small: 'Small (14–16 ft)', medium: 'Medium (17–20 ft)', large: 'Large (21–24 ft)' },
+  bathroomType: { none: 'No bathroom', wet_bath: 'Wet bath', dry_bath: 'Dry bath' },
+  kitchenType: { basic: 'Basic', standard: 'Standard', extended_storage: 'Extended storage' },
+  powerOption: { solar: 'Solar', battery: 'Battery', shore_power: 'Shore power' },
+  usage: { weekend: 'Weekend camping', part_time: 'Part-time living', full_time: 'Full-time living' },
+  towVehicle: { suv: 'SUV', truck: 'Truck', unsure: 'Unsure' },
+  designStyle: { modern: 'Modern', rustic: 'Rustic', minimalist: 'Minimalist', luxury_compact: 'Luxury Compact' },
+  budgetRange: { under_40k: 'Under $40k', '40k_50k': '$40k–$50k', '50k_70k': '$50k–$70k', '70k_plus': '$70k+' },
+} as const;
 
 const STATUS_PROGRESS: Record<Project['status'], number> = {
-  draft: 15,
-  submitted: 35,
-  in_review: 65,
-  approved: 100,
+  draft:                    5,
+  intake_submitted:         15,
+  awaiting_concept:         25,
+  concept_generated:        35,
+  under_architect_review:   55,
+  revision_requested:       65,
+  approved:                 90,
+  final_design_in_progress: 100,
 };
 
 function formatDate(iso: string): string {
@@ -72,7 +87,7 @@ export function ProjectView() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="p-8 max-w-6xl mx-auto">
+      <main className="px-8 pb-8 pt-24 max-w-6xl mx-auto">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
@@ -167,16 +182,15 @@ function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyPr
           <div className="bg-white rounded-2xl border border-[#e3e0da] p-8 shadow-sm">
             <h2 className="text-2xl font-bold text-[#1c1a17] mb-6">Project Brief</h2>
             <dl className="divide-y divide-[#f7f6f3]">
-              <BriefRow label="Trailer length" value={`${project.brief.trailerLengthFt} ft`} />
-              <BriefRow label="Sleeping capacity" value={`${project.brief.sleeps} adults`} />
-              <BriefRow label="Wet bath" value={project.brief.hasWetBath ? 'Included' : 'Not requested'} included={project.brief.hasWetBath} />
-              <BriefRow label="Kitchenette" value={project.brief.hasKitchenette ? 'Included' : 'Not requested'} included={project.brief.hasKitchenette} />
-              <BriefRow label="Solar upgrade" value={project.brief.solar ? 'Requested' : 'Not requested'} included={project.brief.solar} />
-              <BriefRow label="Battery upgrade" value={project.brief.battery ? 'Requested' : 'Not requested'} included={project.brief.battery} />
-              <div className="flex items-center justify-between py-3">
-                <dt className="text-[#6b6560]">Budget</dt>
-                <dd className="font-bold text-[#2f6f4f] text-lg">{formatUsd(project.brief.budgetUsd)}</dd>
-              </div>
+              <BriefRow label="Size" value={BRIEF_LABELS.sizeCategory[project.brief.sizeCategory]} />
+              <BriefRow label="Sleeping capacity" value={project.brief.sleeps === 6 ? '5–6 adults' : `${project.brief.sleeps} adults`} />
+              <BriefRow label="Bathroom" value={BRIEF_LABELS.bathroomType[project.brief.bathroomType]} />
+              <BriefRow label="Kitchen" value={BRIEF_LABELS.kitchenType[project.brief.kitchenType]} />
+              <BriefRow label="Power" value={project.brief.powerOptions.length > 0 ? project.brief.powerOptions.map(p => BRIEF_LABELS.powerOption[p]).join(', ') : 'Standard'} />
+              <BriefRow label="Usage" value={BRIEF_LABELS.usage[project.brief.intendedUsage]} />
+              <BriefRow label="Tow vehicle" value={BRIEF_LABELS.towVehicle[project.brief.towVehicle]} />
+              <BriefRow label="Design style" value={BRIEF_LABELS.designStyle[project.brief.designStyle]} />
+              <BriefRow label="Budget" value={BRIEF_LABELS.budgetRange[project.brief.budgetRange]} />
             </dl>
 
             {project.brief.notes && (
@@ -201,6 +215,9 @@ function ProjectBody({ project, firm, equivalentBuild, onReload }: ProjectBodyPr
             onReject={async () => {
               await projectRepository.rejectConceptLayout(project.id);
               await onReload();
+            }}
+            onZonesChange={(zones) => {
+              void projectRepository.updateConceptLayoutZones(project.id, zones);
             }}
           />
         </div>

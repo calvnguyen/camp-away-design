@@ -11,21 +11,46 @@
 // an admin dashboard (all projects, firms, platform metrics).
 
 export type ProjectStatus =
-  | 'draft' // brief started, not yet submitted
-  | 'submitted' // brief submitted, awaiting first floorplan
-  | 'in_review' // a floorplan version is up for client review
-  | 'approved'; // client approved the current floorplan
+  | 'draft'                   // brief started, not yet submitted
+  | 'intake_submitted'        // brief submitted, awaiting concept decision
+  | 'awaiting_concept'        // brief submitted, no concept generated yet
+  | 'concept_generated'       // concept layout generated, awaiting architect
+  | 'under_architect_review'  // assigned firm is designing
+  | 'revision_requested'      // client requested changes to current floorplan
+  | 'approved'                // client approved the current floorplan
+  | 'final_design_in_progress'; // production build underway
 
-/** The client's requirements for their trailer — captured by the brief form and
- *  shown read-only on the project view. Mirrors the PRD's small-trailer envelope. */
+// --- Brief field enum types ---
+
+export type TrailerSizeCategory = 'small' | 'medium' | 'large';
+
+export type BathroomType = 'none' | 'wet_bath' | 'dry_bath';
+
+export type KitchenType = 'basic' | 'standard' | 'extended_storage';
+
+export type PowerOption = 'solar' | 'battery' | 'shore_power';
+
+export type UsageIntent = 'weekend' | 'part_time' | 'full_time';
+
+export type TowVehicle = 'suv' | 'truck' | 'unsure';
+
+export type BudgetRange = 'under_40k' | '40k_50k' | '50k_70k' | '70k_plus';
+
+export type DesignStyle = 'modern' | 'rustic' | 'minimalist' | 'luxury_compact';
+
+/** The client's requirements for their trailer — captured by the intake form. */
 export interface TrailerBrief {
-  trailerLengthFt: number; // small only, target 16–18
-  sleeps: number; // adults
-  hasWetBath: boolean;
-  hasKitchenette: boolean;
-  solar: boolean; // optional upgrade
-  battery: boolean; // optional upgrade
-  budgetUsd: number; // target under ~50k
+  /** Small (14–16 ft), Medium (17–20 ft), or Large (21–24 ft). */
+  sizeCategory: TrailerSizeCategory;
+  /** Number of sleeping adults: 2, 3, 4, or 6 (representing "5–6 people"). */
+  sleeps: number;
+  bathroomType: BathroomType;
+  kitchenType: KitchenType;
+  powerOptions: PowerOption[];
+  intendedUsage: UsageIntent;
+  towVehicle: TowVehicle;
+  budgetRange: BudgetRange;
+  designStyle: DesignStyle;
   notes: string;
 }
 
@@ -139,10 +164,10 @@ export interface ConceptLayout {
 export interface StandardBuild {
   id: string;
   name: string;
-  lengthFt: number;
+  sizeCategory: TrailerSizeCategory;
   sleeps: number;
-  hasWetBath: boolean;
-  hasKitchenette: boolean;
+  bathroomType: BathroomType;
+  kitchenType: KitchenType;
 }
 
 /** A third-party design/build firm. */

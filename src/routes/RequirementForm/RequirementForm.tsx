@@ -1,74 +1,52 @@
-import { useRef, useState } from 'react';
-import type { ReactNode, RefObject } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Check } from 'lucide-react';
 import { projectRepository } from '../../data';
-import { TRAILER_CONSTRAINTS } from '../../lib/constraints';
+import { SLEEP_OPTIONS, TRAILER_SIZE_CATEGORIES } from '../../lib/constraints';
 import { AppNav } from '../../components/AppNav';
+import type {
+  BathroomType,
+  BudgetRange,
+  DesignStyle,
+  KitchenType,
+  PowerOption,
+  TrailerSizeCategory,
+  TowVehicle,
+  UsageIntent,
+} from '../../types';
 
-type FieldName = 'clientName' | 'length' | 'sleeps' | 'budget';
+type FieldName = 'clientName' | 'sizeCategory' | 'sleeps' | 'bathroomType' | 'kitchenType' | 'budgetRange' | 'designStyle' | 'intendedUsage' | 'towVehicle';
 type Errors = Partial<Record<FieldName, string>>;
-
-/** Parse a user-entered number, tolerating commas/$ (e.g. "45,000"). */
-function parseNumber(raw: string): number | null {
-  const cleaned = raw.replace(/[$,\s]/g, '');
-  if (cleaned === '' || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
-  return Number(cleaned);
-}
 
 export function RequirementForm() {
   const navigate = useNavigate();
 
   const [clientName, setClientName] = useState('');
-  const [length, setLength] = useState(String(TRAILER_CONSTRAINTS.trailerLengthFt.default));
-  const [sleeps, setSleeps] = useState(String(TRAILER_CONSTRAINTS.sleeps.default));
-  const [budget, setBudget] = useState('');
+  const [sizeCategory, setSizeCategory] = useState<TrailerSizeCategory>('medium');
+  const [sleeps, setSleeps] = useState<number>(2);
+  const [bathroomType, setBathroomType] = useState<BathroomType>('wet_bath');
+  const [kitchenType, setKitchenType] = useState<KitchenType>('standard');
+  const [powerOptions, setPowerOptions] = useState<PowerOption[]>([]);
+  const [intendedUsage, setIntendedUsage] = useState<UsageIntent>('weekend');
+  const [towVehicle, setTowVehicle] = useState<TowVehicle>('suv');
+  const [budgetRange, setBudgetRange] = useState<BudgetRange>('40k_50k');
+  const [designStyle, setDesignStyle] = useState<DesignStyle>('modern');
   const [notes, setNotes] = useState('');
-  const [wetBath, setWetBath] = useState(true);
-  const [kitchenette, setKitchenette] = useState(true);
-  const [solar, setSolar] = useState(false);
-  const [battery, setBattery] = useState(false);
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const refs: Record<FieldName, RefObject<HTMLInputElement | null>> = {
-    clientName: useRef<HTMLInputElement>(null),
-    length: useRef<HTMLInputElement>(null),
-    sleeps: useRef<HTMLInputElement>(null),
-    budget: useRef<HTMLInputElement>(null),
-  };
+  function togglePowerOption(opt: PowerOption) {
+    setPowerOptions((prev) =>
+      prev.includes(opt) ? prev.filter((p) => p !== opt) : [...prev, opt],
+    );
+  }
 
   function validate(): Errors {
     const next: Errors = {};
-    const { trailerLengthFt, buildCostCeilingUsd } = TRAILER_CONSTRAINTS;
-
-    if (clientName.trim() === '') {
-      next.clientName = 'Client name is required.';
-    }
-
-    const lengthVal = parseNumber(length);
-    if (lengthVal === null) {
-      next.length = 'Enter the trailer length in feet.';
-    } else if (lengthVal < trailerLengthFt.min || lengthVal > trailerLengthFt.max) {
-      next.length = `Length must be ${trailerLengthFt.min}–${trailerLengthFt.max} ft to stay SUV-towable.`;
-    }
-
-    const sleepsVal = parseNumber(sleeps);
-    if (sleepsVal === null || !Number.isInteger(sleepsVal) || sleepsVal < 1) {
-      next.sleeps = 'Sleeping capacity must be a whole number of at least 1.';
-    }
-
-    const budgetVal = parseNumber(budget);
-    if (budgetVal === null) {
-      next.budget = 'Enter a budget in USD.';
-    } else if (budgetVal <= 0) {
-      next.budget = 'Budget must be greater than zero.';
-    } else if (budgetVal > buildCostCeilingUsd) {
-      next.budget = `Budget must stay under ${formatUsd(buildCostCeilingUsd)} for a small build.`;
-    }
-
+    if (clientName.trim() === '') next.clientName = 'Client name is required.';
     return next;
   }
 
@@ -76,30 +54,17 @@ export function RequirementForm() {
     setSubmitError(null);
     const found = validate();
     setErrors(found);
-
     if (Object.keys(found).length > 0) {
-      // Move focus to the first invalid field so keyboard/SR users land on it.
-      const order: FieldName[] = ['clientName', 'length', 'sleeps', 'budget'];
-      const first = order.find((f) => found[f]);
-      if (first) refs[first].current?.focus();
+      const el = document.getElementById('clientName');
+      el?.focus();
       return;
     }
-
     setSubmitting(true);
     try {
       const project = await projectRepository.createProject({
         clientName: clientName.trim(),
         submit,
-        brief: {
-          trailerLengthFt: parseNumber(length)!,
-          sleeps: parseNumber(sleeps)!,
-          hasWetBath: wetBath,
-          hasKitchenette: kitchenette,
-          solar,
-          battery,
-          budgetUsd: parseNumber(budget)!,
-          notes: notes.trim(),
-        },
+        brief: { sizeCategory, sleeps, bathroomType, kitchenType, powerOptions, intendedUsage, towVehicle, budgetRange, designStyle, notes: notes.trim() },
       });
       navigate(submit ? `/project/${project.id}` : '/');
     } catch {
@@ -108,11 +73,12 @@ export function RequirementForm() {
     }
   }
 
+  const sizeSpec = TRAILER_SIZE_CATEGORIES[sizeCategory];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
-
-      <main className="p-8 max-w-4xl mx-auto">
+      <main className="px-8 pb-8 pt-24 max-w-4xl mx-auto">
         <button
           type="button"
           onClick={() => navigate('/')}
@@ -125,83 +91,145 @@ export function RequirementForm() {
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-[#1c1a17] mb-3">New Trailer Brief</h1>
           <p className="text-[#6b6560] text-lg">
-            Tell us about your trailer home — layout, features, and budget.
+            Tell us about the trailer you have in mind — size, features, and style.
           </p>
         </div>
 
         <form
           noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save(true);
-          }}
-          className="bg-white rounded-3xl border border-[#e3e0da] p-8 shadow-lg space-y-6"
+          onSubmit={(e) => { e.preventDefault(); void save(true); }}
+          className="bg-white rounded-3xl border border-[#e3e0da] p-8 shadow-lg space-y-8"
         >
-          <TextField
-            id="clientName"
-            label="Client name"
-            value={clientName}
-            onChange={setClientName}
-            error={errors.clientName}
-            inputRef={refs.clientName}
-            autoComplete="name"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextField
-              id="length"
-              label="Trailer length (ft)"
-              value={length}
-              onChange={setLength}
-              error={errors.length}
-              inputRef={refs.length}
-              hint={`Target ${TRAILER_CONSTRAINTS.trailerLengthFt.min}–${TRAILER_CONSTRAINTS.trailerLengthFt.max} ft for SUV towing.`}
-              inputMode="numeric"
+          {/* Client name */}
+          <div>
+            <label htmlFor="clientName" className="block text-sm font-semibold text-[#1c1a17] mb-2">
+              Client name <span aria-hidden="true" className="text-[#b4231d]">*</span>
+            </label>
+            <input
+              id="clientName"
+              type="text"
+              autoComplete="name"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              aria-invalid={errors.clientName ? true : undefined}
+              aria-describedby={errors.clientName ? 'clientName-error' : undefined}
+              className={`w-full px-4 py-3 bg-white border-2 rounded-xl focus:outline-none transition-colors ${errors.clientName ? 'border-[#b4231d] focus:border-[#b4231d]' : 'border-[#e3e0da] focus:border-[#2f6f4f]'}`}
             />
-            <TextField
-              id="sleeps"
-              label="Sleeping capacity"
-              value={sleeps}
-              onChange={setSleeps}
-              error={errors.sleeps}
-              inputRef={refs.sleeps}
-              hint="Adults."
-              inputMode="numeric"
-            />
+            {errors.clientName && (
+              <p id="clientName-error" role="alert" className="text-xs text-[#b4231d] font-medium mt-1">
+                {errors.clientName}
+              </p>
+            )}
           </div>
 
-          <Fieldset legend="Features">
-            <FeatureSwitch label="Wet bath (shower + toilet)" checked={wetBath} onChange={setWetBath} />
-            <FeatureSwitch label="Compact kitchenette" checked={kitchenette} onChange={setKitchenette} />
-          </Fieldset>
+          {/* Trailer size + sleeping */}
+          <Section title="Trailer Size">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField
+                id="sizeCategory"
+                label="Trailer size"
+                value={sizeCategory}
+                onChange={(v) => setSizeCategory(v as TrailerSizeCategory)}
+                hint={`Tow vehicle: ${sizeSpec.towVehicle} · ${sizeSpec.minWeightLbs.toLocaleString()}–${sizeSpec.maxWeightLbs.toLocaleString()} lbs`}
+              >
+                {(Object.keys(TRAILER_SIZE_CATEGORIES) as TrailerSizeCategory[]).map((cat) => (
+                  <option key={cat} value={cat}>{TRAILER_SIZE_CATEGORIES[cat].label}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                id="sleeps"
+                label="Sleeping capacity"
+                value={String(sleeps)}
+                onChange={(v) => setSleeps(Number(v))}
+              >
+                {SLEEP_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </SelectField>
+            </div>
+          </Section>
 
-          <Fieldset legend="Optional upgrades">
-            <FeatureSwitch label="Solar panels" checked={solar} onChange={setSolar} />
-            <FeatureSwitch label="Battery pack" checked={battery} onChange={setBattery} />
-          </Fieldset>
+          {/* Interior */}
+          <Section title="Interior">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField id="bathroomType" label="Bathroom type" value={bathroomType} onChange={(v) => setBathroomType(v as BathroomType)}>
+                <option value="none">No Bathroom</option>
+                <option value="wet_bath">Wet Bath (Shower + Toilet)</option>
+                <option value="dry_bath">Dry Bath</option>
+              </SelectField>
+              <SelectField id="kitchenType" label="Kitchenette" value={kitchenType} onChange={(v) => setKitchenType(v as KitchenType)}>
+                <option value="basic">Basic</option>
+                <option value="standard">Standard</option>
+                <option value="extended_storage">Extended Storage</option>
+              </SelectField>
+            </div>
+          </Section>
 
-          <TextField
-            id="budget"
-            label="Budget (USD)"
-            value={budget}
-            onChange={setBudget}
-            error={errors.budget}
-            inputRef={refs.budget}
-            hint={`Target under ${formatUsd(TRAILER_CONSTRAINTS.buildCostCeilingUsd)}.`}
-            inputMode="numeric"
-            placeholder="45,000"
-          />
+          {/* Power */}
+          <Section title="Power Options">
+            <fieldset className="border-0 p-0 m-0">
+              <legend className="sr-only">Power options</legend>
+              <div className="space-y-3">
+                {(
+                  [
+                    { value: 'solar', label: 'Solar Upgrade' },
+                    { value: 'battery', label: 'Battery Backup' },
+                    { value: 'shore_power', label: 'Shore Power Only' },
+                  ] as { value: PowerOption; label: string }[]
+                ).map(({ value, label }) => (
+                  <label key={value} className="flex items-center gap-3 p-4 bg-[#f7f6f3] rounded-xl cursor-pointer hover:bg-[#ebe9e3] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={powerOptions.includes(value)}
+                      onChange={() => togglePowerOption(value)}
+                      className="w-4 h-4 accent-[#2f6f4f]"
+                    />
+                    <span className="font-medium text-[#1c1a17]">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </Section>
 
+          {/* Usage & style */}
+          <Section title="Usage & Style">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField id="intendedUsage" label="Intended usage" value={intendedUsage} onChange={(v) => setIntendedUsage(v as UsageIntent)}>
+                <option value="weekend">Weekend Camping</option>
+                <option value="part_time">Part-Time Living</option>
+                <option value="full_time">Full-Time Living</option>
+              </SelectField>
+              <SelectField id="towVehicle" label="Tow vehicle" value={towVehicle} onChange={(v) => setTowVehicle(v as TowVehicle)}>
+                <option value="suv">SUV</option>
+                <option value="truck">Truck</option>
+                <option value="unsure">Unsure</option>
+              </SelectField>
+              <SelectField id="designStyle" label="Design style" value={designStyle} onChange={(v) => setDesignStyle(v as DesignStyle)}>
+                <option value="modern">Modern</option>
+                <option value="rustic">Rustic</option>
+                <option value="minimalist">Minimalist</option>
+                <option value="luxury_compact">Luxury Compact</option>
+              </SelectField>
+              <SelectField id="budgetRange" label="Budget range" value={budgetRange} onChange={(v) => setBudgetRange(v as BudgetRange)}>
+                <option value="under_40k">Under $40k</option>
+                <option value="40k_50k">$40k–$50k</option>
+                <option value="50k_70k">$50k–$70k</option>
+                <option value="70k_plus">$70k+</option>
+              </SelectField>
+            </div>
+          </Section>
+
+          {/* Notes */}
           <div>
             <label htmlFor="notes" className="block text-sm font-semibold text-[#1c1a17] mb-2">
-              Notes
+              Additional notes
             </label>
             <textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Weekend getaways for two; prefer light wood interior."
+              placeholder="Any specific requests, inspirations, or constraints…"
               className="w-full px-4 py-3 bg-white border-2 border-[#e3e0da] rounded-xl focus:outline-none focus:border-[#2f6f4f] transition-colors resize-none"
             />
           </div>
@@ -236,112 +264,39 @@ export function RequirementForm() {
   );
 }
 
-function formatUsd(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(amount);
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-[#1c1a17] mb-4 pb-2 border-b border-[#f7f6f3]">{title}</h2>
+      {children}
+    </div>
+  );
 }
 
-interface TextFieldProps {
+interface SelectFieldProps {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  error?: string;
   hint?: string;
-  inputRef: RefObject<HTMLInputElement | null>;
-  inputMode?: 'numeric' | 'text';
-  autoComplete?: string;
-  placeholder?: string;
+  children: ReactNode;
 }
 
-function TextField({
-  id,
-  label,
-  value,
-  onChange,
-  error,
-  hint,
-  inputRef,
-  inputMode,
-  autoComplete,
-  placeholder,
-}: TextFieldProps) {
-  const hintId = hint ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
-
+function SelectField({ id, label, value, onChange, hint, children }: SelectFieldProps) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-semibold text-[#1c1a17] mb-2">
         {label}
       </label>
-      <input
+      <select
         id={id}
-        ref={inputRef}
-        type="text"
-        inputMode={inputMode}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={`w-full px-4 py-3 bg-white border-2 rounded-xl focus:outline-none transition-colors ${
-          error ? 'border-[#b4231d] focus:border-[#b4231d]' : 'border-[#e3e0da] focus:border-[#2f6f4f]'
-        }`}
-      />
-      {hint && (
-        <p id={hintId} className="text-xs text-[#6b6560] mt-1">
-          {hint}
-        </p>
-      )}
-      {error && (
-        <p id={errorId} role="alert" className="text-xs text-[#b4231d] font-medium mt-1">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
-  return (
-    <fieldset className="border-0 p-0 m-0">
-      <legend className="block text-sm font-semibold text-[#1c1a17] mb-4">{legend}</legend>
-      <div className="space-y-3">{children}</div>
-    </fieldset>
-  );
-}
-
-interface FeatureSwitchProps {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function FeatureSwitch({ label, checked, onChange }: FeatureSwitchProps) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between p-4 bg-[#f7f6f3] rounded-xl hover:bg-[#ebe9e3] transition-colors text-left"
-    >
-      <span className="font-medium text-[#1c1a17]">{label}</span>
-      <span
-        aria-hidden="true"
-        className={`relative w-12 h-6 rounded-full transition-colors ${checked ? 'bg-[#2f6f4f]' : 'bg-[#e3e0da]'}`}
+        className="w-full px-4 py-3 bg-white border-2 border-[#e3e0da] rounded-xl focus:outline-none focus:border-[#2f6f4f] transition-colors appearance-none"
       >
-        <span
-          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-0.5'
-          }`}
-        />
-      </span>
-    </button>
+        {children}
+      </select>
+      {hint && <p className="text-xs text-[#6b6560] mt-1">{hint}</p>}
+    </div>
   );
 }

@@ -1,31 +1,69 @@
 // Domain constraints from the PRD. Reference these constants for defaults,
 // validation, and labels — never hardcode these numbers in components.
 
-export const TRAILER_CONSTRAINTS = {
-  trailerLengthFt: { min: 16, max: 18, default: 17 },
-  /** Interior width of a standard SUV-towable trailer (used by concept layouts). */
-  widthFt: 7,
-  sleeps: { default: 2 },
-  maxLoadedWeightLbs: 5_000,
-  /** Small trailers must be buildable under this to stay quick + cheap (build-side ceiling). */
-  buildCostCeilingUsd: 50_000,
-} as const;
+import type { TrailerSizeCategory } from '../types';
 
-/**
- * Validate a rental request's headline fields against the small-trailer range.
- * Returns field-keyed warning messages (soft — these warn, they don't block).
- */
-export function validateRequirements(input: {
-  trailerLengthFt: number;
-}): Partial<Record<'trailerLengthFt', string>> {
-  const errors: Partial<Record<'trailerLengthFt', string>> = {};
-  const { trailerLengthFt } = TRAILER_CONSTRAINTS;
-
-  if (
-    input.trailerLengthFt < trailerLengthFt.min ||
-    input.trailerLengthFt > trailerLengthFt.max
-  ) {
-    errors.trailerLengthFt = `Trailer length should be ${trailerLengthFt.min}–${trailerLengthFt.max} ft for a small, SUV-towable rental.`;
-  }
-  return errors;
+export interface SizeCategorySpec {
+  label: string;
+  minLengthFt: number;
+  maxLengthFt: number;
+  /** Representative length used for concept layout envelopes. */
+  envelopeLengthFt: number;
+  /** Interior width (ft). */
+  widthFt: number;
+  /** Typical sleeping range for UI hints. */
+  sleepsRange: string;
+  towVehicle: string;
+  minWeightLbs: number;
+  maxWeightLbs: number;
 }
+
+export const TRAILER_SIZE_CATEGORIES: Record<TrailerSizeCategory, SizeCategorySpec> = {
+  small: {
+    label: 'Small (14–16 ft)',
+    minLengthFt: 14,
+    maxLengthFt: 16,
+    envelopeLengthFt: 16,
+    widthFt: 7,
+    sleepsRange: '2',
+    towVehicle: 'Midsize SUV',
+    minWeightLbs: 3_000,
+    maxWeightLbs: 4_500,
+  },
+  medium: {
+    label: 'Medium (17–20 ft)',
+    minLengthFt: 17,
+    maxLengthFt: 20,
+    envelopeLengthFt: 18,
+    widthFt: 7.5,
+    sleepsRange: '2–4',
+    towVehicle: 'Large SUV / Light Truck',
+    minWeightLbs: 4_500,
+    maxWeightLbs: 6_500,
+  },
+  large: {
+    label: 'Large (21–24 ft)',
+    minLengthFt: 21,
+    maxLengthFt: 24,
+    envelopeLengthFt: 22,
+    widthFt: 8,
+    sleepsRange: '4–6',
+    towVehicle: 'Full-Size Truck / Heavy SUV',
+    minWeightLbs: 6_500,
+    maxWeightLbs: 9_000,
+  },
+};
+
+export const BUDGET_RANGE_LABELS: Record<string, string> = {
+  under_40k: 'Under $40k',
+  '40k_50k': '$40k–$50k',
+  '50k_70k': '$50k–$70k',
+  '70k_plus': '$70k+',
+};
+
+export const SLEEP_OPTIONS: { value: number; label: string }[] = [
+  { value: 2, label: '2 People' },
+  { value: 3, label: '3 People' },
+  { value: 4, label: '4 People' },
+  { value: 6, label: '5–6 People' },
+];

@@ -52,7 +52,7 @@ export function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="p-8 max-w-7xl mx-auto">
+      <main className="px-8 pb-8 pt-24 max-w-7xl mx-auto">
         <div className="mb-10">
           <h1 className="text-5xl font-bold text-[#1c1a17] mb-3 tracking-tight">Admin Dashboard</h1>
           <p className="text-[#6b6560] text-lg">All projects, firms, and platform metrics.</p>

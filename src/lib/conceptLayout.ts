@@ -3,7 +3,7 @@
 // pure so it's unit-testable without rendering and reusable by both the template
 // generator and the Claude generator's output check.
 
-import { TRAILER_CONSTRAINTS } from './constraints';
+import { TRAILER_SIZE_CATEGORIES } from './constraints';
 import type { LayoutZone, TrailerBrief, ZoneKind } from '../types';
 
 /** Zones every concept layout must contain (entry, kitchenette, bath, storage, sleeping). */
@@ -23,11 +23,10 @@ export interface ConceptEnvelope {
   widthFt: number;
 }
 
-/** The trailer envelope a layout is built within, derived from the brief. */
-export function envelopeFor(brief: Pick<TrailerBrief, 'trailerLengthFt'>): ConceptEnvelope {
-  const { trailerLengthFt } = TRAILER_CONSTRAINTS;
-  const lengthFt = clamp(brief.trailerLengthFt, trailerLengthFt.min, trailerLengthFt.max);
-  return { lengthFt, widthFt: TRAILER_CONSTRAINTS.widthFt };
+/** The trailer envelope a layout is built within, derived from the brief's size category. */
+export function envelopeFor(brief: Pick<TrailerBrief, 'sizeCategory'>): ConceptEnvelope {
+  const spec = TRAILER_SIZE_CATEGORIES[brief.sizeCategory];
+  return { lengthFt: spec.envelopeLengthFt, widthFt: spec.widthFt };
 }
 
 function clamp(n: number, min: number, max: number): number {

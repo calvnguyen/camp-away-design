@@ -30,13 +30,15 @@ const img = (id: string, w = 800) =>
 
 function brief(overrides: Partial<TrailerBrief> = {}): TrailerBrief {
   return {
-    trailerLengthFt: 17,
+    sizeCategory: 'medium',
     sleeps: 2,
-    hasWetBath: true,
-    hasKitchenette: true,
-    solar: false,
-    battery: false,
-    budgetUsd: 45_000,
+    bathroomType: 'wet_bath',
+    kitchenType: 'standard',
+    powerOptions: [],
+    intendedUsage: 'weekend',
+    towVehicle: 'suv',
+    budgetRange: '40k_50k',
+    designStyle: 'modern',
     notes: '',
     ...overrides,
   };
@@ -59,11 +61,12 @@ export function seedProjects(): Project[] {
       id: '1',
       clientName: 'Maria & Jon',
       brief: brief({
-        trailerLengthFt: 17,
-        budgetUsd: 45_000,
+        sizeCategory: 'medium',
+        budgetRange: '40k_50k',
+        designStyle: 'rustic',
         notes: 'Weekend getaways for two; prefer light wood interior.',
       }),
-      status: 'in_review',
+      status: 'under_architect_review',
       firmId: 'firm-cedar-pine',
       thumbnailUrl: img('1604549053344-d353adf347d7', 400),
       galleryUrls: [
@@ -113,12 +116,13 @@ export function seedProjects(): Project[] {
       id: '2',
       clientName: 'Dev & Sam',
       brief: brief({
-        trailerLengthFt: 18,
-        budgetUsd: 48_500,
-        solar: true,
+        sizeCategory: 'medium',
+        powerOptions: ['solar'],
+        intendedUsage: 'weekend',
+        budgetRange: '40k_50k',
         notes: 'Off-grid weekends; would love solar.',
       }),
-      status: 'submitted',
+      status: 'intake_submitted',
       firmId: null,
       thumbnailUrl: img('1604549001484-df28edea610b', 400),
       galleryUrls: [img('1604549001484-df28edea610b', 1080)],
@@ -132,8 +136,9 @@ export function seedProjects(): Project[] {
       id: '3',
       clientName: 'The Okafors',
       brief: brief({
-        trailerLengthFt: 16,
-        budgetUsd: 42_000,
+        sizeCategory: 'small',
+        budgetRange: 'under_40k',
+        designStyle: 'minimalist',
         notes: 'Compact and light; two kids occasionally.',
       }),
       status: 'approved',
@@ -176,7 +181,7 @@ export function seedProjects(): Project[] {
       clientName: 'Lena T.',
       // Sleeps 3 → no equivalent standard build, so a concept layout applies
       // (not yet generated — the project view offers to generate one).
-      brief: brief({ trailerLengthFt: 17, sleeps: 3, budgetUsd: 50_000, notes: 'Needs to sleep three.' }),
+      brief: brief({ sizeCategory: 'medium', sleeps: 3, budgetRange: '50k_70k', notes: 'Needs to sleep three.' }),
       status: 'draft',
       firmId: 'firm-cedar-pine',
       thumbnailUrl: img('1641996992441-244ee607935b', 400),
@@ -190,8 +195,8 @@ export function seedProjects(): Project[] {
     {
       id: '5',
       clientName: 'Priya & Rui',
-      brief: brief({ trailerLengthFt: 17, budgetUsd: 47_000, battery: true }),
-      status: 'in_review',
+      brief: brief({ sizeCategory: 'medium', budgetRange: '40k_50k', powerOptions: ['battery'] }),
+      status: 'revision_requested',
       firmId: 'firm-tiny-foundry',
       thumbnailUrl: img('1604549001484-df28edea610b', 400),
       galleryUrls: [img('1604549001484-df28edea610b', 1080)],
@@ -213,23 +218,22 @@ export function seedProjects(): Project[] {
     {
       id: '6',
       clientName: 'Aria & Sky',
-      // Wet bath omitted → no equivalent build; a concept layout has been
-      // generated and is awaiting approval (the production gate).
+      // Dry bath → no equivalent standard build; concept layout generated awaiting approval.
       brief: brief({
-        trailerLengthFt: 18,
+        sizeCategory: 'medium',
         sleeps: 2,
-        hasWetBath: false,
-        budgetUsd: 39_000,
-        notes: 'Prefer a portable toilet and more storage over a wet bath.',
+        bathroomType: 'dry_bath',
+        budgetRange: 'under_40k',
+        notes: 'Prefer a dry bath and more storage.',
       }),
-      status: 'submitted',
+      status: 'concept_generated',
       firmId: null,
       thumbnailUrl: img('1641996992441-244ee607935b', 400),
       galleryUrls: [img('1641996992441-244ee607935b', 1080)],
       floorplans: [],
       comments: [],
       conceptLayout: pendingConceptLayout(
-        brief({ trailerLengthFt: 18, sleeps: 2, hasWetBath: false }),
+        brief({ sizeCategory: 'medium', sleeps: 2, bathroomType: 'dry_bath' }),
         'concept-aria-sky',
         '2026-05-29T12:00:00.000Z',
       ),
