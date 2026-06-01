@@ -83,7 +83,7 @@ export function LoginForm() {
         </div>
 
         <h1 className="text-xl font-semibold text-[#1c1a17] text-center mb-6">
-          {mode === 'signin' ? 'Please sign in' : 'Create an account'}
+          {mode === 'signin' ? 'Design and review custom rental trailer homes.' : 'Create an account'}
         </h1>
 
         {info && (
