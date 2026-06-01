@@ -19,3 +19,10 @@ npm-debug.log*
 *storybook.log
 storybook-static
 .mcp.json
+.vercel
+
+# Tooling / Claude Code
+.agents/
+.claude/skills/
+skills-lock.json
+tsconfig.tsbuildinfo
