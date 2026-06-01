@@ -82,7 +82,7 @@ export function LoginForm() {
           <Logo variant="default" size="md" />
         </div>
 
-        <h1 className="text-xl font-semibold text-[#1c1a17] text-center mb-6">
+        <h1 className="text-sm font-normal text-[#6b6560] text-center mb-6">
           {mode === 'signin' ? 'Design and review custom rental trailer homes.' : 'Create an account'}
         </h1>
 
