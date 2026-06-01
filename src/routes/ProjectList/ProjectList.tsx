@@ -74,7 +74,7 @@ export function ProjectList() {
             <Logo size="lg" />
           </h1>
           <p className="text-[#6b6560] text-lg max-w-2xl">
-            Affordable, SUV-towable tiny homes — from brief to approved floorplan.
+            Tiny trailers for rent. Design yours — SUV-towable, affordable, from brief to approved floorplan.
           </p>
         </div>
 
