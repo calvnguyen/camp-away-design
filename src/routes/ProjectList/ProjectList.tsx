@@ -1,6 +1,8 @@
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import Link from 'next/link';
 import { Plus, Search, TrendingUp, Clock, CheckCircle2, Image as ImageIcon } from 'lucide-react';
 import { projectRepository } from '../../data';
 import type { Project } from '../../types';
@@ -99,7 +101,7 @@ export function ProjectList() {
             label="Completed"
           />
           <Link
-            to="/new"
+            href="/new"
             className="bg-gradient-to-br from-[#2f6f4f] to-[#25533d] rounded-2xl p-6 shadow-lg text-white hover:shadow-xl transition-shadow block"
           >
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-3">
@@ -148,7 +150,7 @@ export function ProjectList() {
               return (
                 <li key={project.id}>
                   <Link
-                    to={`/project/${project.id}`}
+                    href={`/project/${project.id}`}
                     className="group bg-white rounded-2xl border border-[#e3e0da] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 block"
                   >
                     <div className="relative h-48 bg-gradient-to-br from-[#f7f6f3] to-[#e3e0da] overflow-hidden">

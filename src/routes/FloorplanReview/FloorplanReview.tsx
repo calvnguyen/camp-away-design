@@ -1,5 +1,8 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MessageCircle, CheckCircle2, Clock, Send, Download, RotateCcw } from 'lucide-react';
 import { projectRepository } from '../../data';
 import type { Comment, CommentRole, Floorplan, Project } from '../../types';
@@ -12,8 +15,9 @@ function formatDate(iso: string): string {
 }
 
 export function FloorplanReview() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const params = useParams();
+  const id = typeof params.id === 'string' ? params.id : undefined;
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'notfound' | 'error'>('loading');
   const [draft, setDraft] = useState('');
@@ -72,7 +76,7 @@ export function FloorplanReview() {
     setApproving(true);
     try {
       await projectRepository.approveCurrentFloorplan(project.id);
-      navigate(`/project/${project.id}`);
+      router.push(`/project/${project.id}`);
     } catch {
       setActionError('We couldn\'t approve this floorplan. Please try again.');
       setApproving(false);
@@ -99,7 +103,7 @@ export function FloorplanReview() {
 
       <main className="px-8 pb-8 pt-24 max-w-7xl mx-auto">
         <Link
-          to={id ? `/project/${id}` : '/'}
+          href={id ? `/project/${id}` : '/'}
           className="inline-flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -114,7 +118,7 @@ export function FloorplanReview() {
         )}
         {state === 'notfound' && (
           <p className="text-[#6b6560]">
-            Project not found. <Link to="/" className="text-[#2f6f4f] underline">Back to projects</Link>.
+            Project not found. <Link href="/" className="text-[#2f6f4f] underline">Back to projects</Link>.
           </p>
         )}
 

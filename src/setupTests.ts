@@ -1,5 +1,22 @@
 import '@testing-library/jest-dom';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
+
+// Mock next/navigation globally so components using usePathname/useRouter/useParams
+// don't crash in the jsdom test environment.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn() }),
+  usePathname: () => '/',
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// Mock next/link so <Link href="..."> renders as a plain <a> in tests.
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => {
+    const React = require('react') as typeof import('react');
+    return React.createElement('a', { href, ...props }, children);
+  },
+}));
 import { cleanup } from '@testing-library/react';
 
 // @react-three/fiber uses ResizeObserver internally; jsdom doesn't ship one.

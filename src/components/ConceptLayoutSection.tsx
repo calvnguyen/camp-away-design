@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Check, RefreshCw, CheckCircle2, XCircle, Maximize2, X } from 'lucide-react';
 import type { ConceptLayout, LayoutZone, StandardBuild } from '../types';

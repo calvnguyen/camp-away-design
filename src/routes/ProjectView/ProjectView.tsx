@@ -1,5 +1,8 @@
+'use client';
+
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { projectRepository } from '../../data';
 import type { Firm, Project, StandardBuild } from '../../types';
@@ -50,7 +53,8 @@ function initials(name: string): string {
 }
 
 export function ProjectView() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = typeof params.id === 'string' ? params.id : undefined;
   const [project, setProject] = useState<Project | null>(null);
   const [firm, setFirm] = useState<Firm | null>(null);
   const [equivalentBuild, setEquivalentBuild] = useState<StandardBuild | null>(null);
@@ -91,7 +95,7 @@ export function ProjectView() {
 
       <main className="px-8 pb-8 pt-24 max-w-6xl mx-auto">
         <Link
-          to="/"
+          href="/"
           className="inline-flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -108,7 +112,7 @@ export function ProjectView() {
           <div>
             <h1 className="text-3xl font-bold text-[#1c1a17] mb-2">Project not found</h1>
             <p className="text-[#6b6560]">
-              The project you’re looking for doesn’t exist. <Link to="/" className="text-[#2f6f4f] underline">Back to projects</Link>.
+              The project you’re looking for doesn’t exist. <Link href="/" className="text-[#2f6f4f] underline">Back to projects</Link>.
             </p>
           </div>
         )}

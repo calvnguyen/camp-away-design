@@ -1,6 +1,8 @@
+'use client';
+
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check } from 'lucide-react';
 import { projectRepository } from '../../data';
 import { SLEEP_OPTIONS, TRAILER_SIZE_CATEGORIES } from '../../lib/constraints';
@@ -20,7 +22,7 @@ type FieldName = 'clientName' | 'sizeCategory' | 'sleeps' | 'bathroomType' | 'ki
 type Errors = Partial<Record<FieldName, string>>;
 
 export function RequirementForm() {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [clientName, setClientName] = useState('');
   const [sizeCategory, setSizeCategory] = useState<TrailerSizeCategory>('medium');
@@ -66,7 +68,7 @@ export function RequirementForm() {
         submit,
         brief: { sizeCategory, sleeps, bathroomType, kitchenType, powerOptions, intendedUsage, towVehicle, budgetRange, designStyle, notes: notes.trim() },
       });
-      navigate(submit ? `/project/${project.id}` : '/');
+      router.push(submit ? `/project/${project.id}` : '/');
     } catch {
       setSubmitError('Something went wrong saving the brief. Please try again.');
       setSubmitting(false);
@@ -81,7 +83,7 @@ export function RequirementForm() {
       <main className="px-8 pb-8 pt-24 max-w-4xl mx-auto">
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />

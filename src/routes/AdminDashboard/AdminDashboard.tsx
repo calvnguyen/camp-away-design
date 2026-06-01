@@ -1,6 +1,8 @@
+'use client';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import Link from 'next/link';
 import { TrendingUp, Users, Clock, Target, BarChart3, Activity } from 'lucide-react';
 import { projectRepository } from '../../data';
 import type { DashboardStats, Firm, Project } from '../../types';
@@ -133,7 +135,7 @@ export function AdminDashboard() {
                         return (
                           <tr key={project.id} className="border-b border-[#f7f6f3] last:border-0">
                             <th scope="row" className="py-4 pr-4 font-semibold text-[#1c1a17] text-left">
-                              <Link to={`/project/${project.id}`} className="hover:text-[#2f6f4f] transition-colors">
+                              <Link href={`/project/${project.id}`} className="hover:text-[#2f6f4f] transition-colors">
                                 {project.clientName}
                               </Link>
                             </th>

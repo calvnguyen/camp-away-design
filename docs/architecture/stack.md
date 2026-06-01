@@ -2,13 +2,13 @@
 
 ## Stack
 
-| Layer | Current (Vite SPA) | Target (Next.js) |
-|---|---|---|
-| Framework | Vite + React SPA | Next.js App Router + React |
-| Styling | Tailwind v4 (new screens) + legacy CSS Modules | Tailwind v4 |
-| Data layer | InMemory + localStorage | Supabase (Postgres + Storage) |
-| Auth | None | Supabase Auth (optional) |
-| Testing | Vitest + RTL (unit) | Vitest + RTL (unit) + Playwright (e2e) |
+| Layer | Stack |
+|---|---|
+| Framework | Next.js 16 App Router + React 19 |
+| Styling | Tailwind v4 + PostCSS |
+| Data layer | InMemoryProjectRepository (dev/test) → SupabaseProjectRepository (prod) |
+| Auth | Supabase Auth via `@supabase/ssr` (cookie-based, proxy.ts session refresh) |
+| Testing | Vitest + RTL (unit) + Playwright (e2e) |
 
 **Tailwind palette** (use as arbitrary values, e.g. `bg-[#2f6f4f]`):
 

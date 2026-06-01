@@ -1,4 +1,7 @@
-import { Link, useLocation } from 'react-router';
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { LayoutGrid, BarChart3 } from 'lucide-react';
 import { Logo } from './Logo';
 
@@ -11,7 +14,7 @@ import { Logo } from './Logo';
  * aria-current="page" so the current section is announced, not just colour-coded.
  */
 export function AppNav() {
-  const { pathname } = useLocation();
+  const pathname = usePathname();
 
   const dashboardActive = pathname.startsWith('/dashboard');
   // Everything that isn't the dashboard lives under the projects workspace.
@@ -28,7 +31,7 @@ export function AppNav() {
   return (
     <div className="fixed top-6 left-6 right-6 z-50 flex items-center justify-between">
       <Link
-        to="/"
+        href="/"
         className="bg-white rounded-2xl border border-[#e3e0da] p-3 shadow-lg hover:shadow-xl transition-shadow"
       >
         <Logo variant="mark" size="sm" />
@@ -39,7 +42,7 @@ export function AppNav() {
         className="flex gap-2 bg-white rounded-2xl border border-[#e3e0da] p-2 shadow-lg"
       >
         <Link
-          to="/"
+          href="/"
           aria-current={projectsActive ? 'page' : undefined}
           className={linkClass(projectsActive)}
         >
@@ -47,7 +50,7 @@ export function AppNav() {
           Projects
         </Link>
         <Link
-          to="/dashboard"
+          href="/dashboard"
           aria-current={dashboardActive ? 'page' : undefined}
           className={linkClass(dashboardActive)}
         >

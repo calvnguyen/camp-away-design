@@ -1,23 +1,26 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router';
 import { RequirementForm } from './RequirementForm';
 
+const pushMock = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => '/',
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 function renderForm() {
-  return render(
-    <MemoryRouter initialEntries={['/new']}>
-      <Routes>
-        <Route path="/new" element={<RequirementForm />} />
-        <Route path="/project/:id" element={<div>Project page</div>} />
-        <Route path="/" element={<div>Projects home</div>} />
-      </Routes>
-    </MemoryRouter>,
-  );
+  return render(<RequirementForm />);
 }
 
 describe('RequirementForm', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    pushMock.mockClear();
+  });
 
   it('blocks submit and announces an error when the client name is empty', async () => {
     const user = userEvent.setup();
@@ -55,7 +58,9 @@ describe('RequirementForm', () => {
     await user.type(screen.getByLabelText(/client name/i), 'Valid Client');
     await user.click(screen.getByRole('button', { name: /submit brief/i }));
 
-    expect(await screen.findByText('Project page')).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(expect.stringMatching(/^\/project\/.+/));
+    });
   });
 
   it('saves a draft without navigating to project page', async () => {
@@ -65,6 +70,8 @@ describe('RequirementForm', () => {
     await user.type(screen.getByLabelText(/client name/i), 'Draft Client');
     await user.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(await screen.findByText('Projects home')).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/');
+    });
   });
 });

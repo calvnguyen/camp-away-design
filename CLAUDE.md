@@ -2,7 +2,7 @@
 
 Rental platform for affordable, SUV-towable tiny trailers. Renters design the trailer they want; the platform matches it to an available unit or reserves a build. Always a rental — never a purchase. Designs stay within the standardized small SUV-towable envelope.
 
-**Status:** Full-stack app. Vite + React SPA with in-memory + localStorage data layer. Migrating to Next.js App Router + Supabase.
+**Status:** Next.js 16 App Router. In-memory + localStorage data layer in place; migrating to Supabase (schema TBD).
 
 Read before building:
 - [docs/prd/overview.md](docs/prd/overview.md) — product requirements, domain rules, out-of-scope
@@ -18,11 +18,11 @@ Read before building:
 - React is less familiar. When something differs from Angular (hooks lifecycle, state colocation vs. services/DI), call out the _why_, not just the _how_.
 - Calvin judges work on: **UX, input validation, system reliability, and accessibility** — all first-class. Flag gaps rather than shipping past them.
 
-## Stack (current → target)
+## Stack
 
-- **Vite + React SPA** → **Next.js App Router + React + TypeScript**
+- **Next.js 16 App Router** — `app/` directory; server components for layout/metadata, `'use client'` for interactive route components.
 - **Tailwind v4** — warm stone / forest-green palette. Legacy CSS Modules components are unused.
-- **Supabase** (Postgres + Storage + Auth) behind the data-layer seam — never imported directly in components.
+- **Supabase** (Postgres + Storage + Auth) behind the data-layer seam — `src/lib/supabase/client.ts` (browser) and `src/lib/supabase/server.ts` (RSC/Route Handlers). Never imported directly in components.
 - **Vitest + RTL** for unit/component tests; **Playwright** for e2e.
 
 Details: [docs/architecture/stack.md](docs/architecture/stack.md)
@@ -30,9 +30,10 @@ Details: [docs/architecture/stack.md](docs/architecture/stack.md)
 ## Commands
 
 ```bash
-npm run dev        # Vite dev server (http://localhost:5173)
-npm run build      # tsc + vite build
-npm run test:run   # vitest once
+npm run dev        # Next.js dev server (http://localhost:3000)
+npm run build      # next build
+npm run test:run   # vitest run (unit)
+npm run test:e2e   # playwright test (e2e)
 npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
 ```
