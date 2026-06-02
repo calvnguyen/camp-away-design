@@ -1,8 +1,37 @@
 # Camp Away Design
 
-Rental platform for affordable, SUV-towable tiny trailers. Clients design the trailer they want; the platform matches it to available inventory or routes them to a custom concept workflow.
-
 **Demo:** [camp-away-design.vercel.app](https://camp-away-design.vercel.app/)
+
+---
+
+## Overview
+
+Camp Away Design is a rental platform for affordable, SUV-towable tiny trailers. It's always a rental — never a purchase.
+
+Clients describe the trailer they want and the platform either matches them to available inventory or walks them through a custom concept design workflow. The core idea: reduce the friction between "I want a small trailer for a weekend trip" and an actual confirmed booking.
+
+### Two workflows
+
+**Rentals** — browse existing fleet inventory, check availability, and book. Three size tiers (Small, Medium, Large) cover most use cases. Clients can add optional upgrades (solar, off-grid battery, roof-top tent, etc.) and submit a booking request for admin approval.
+
+**Projects** — for when no rental matches. The client submits an intake brief, an AI agent generates a rough 2D concept layout, a designer uploads a floorplan, and the client reviews and approves it. The full workflow covers intake → concept generation → designer assignment → floorplan review → approval.
+
+### Agent system
+
+An Orchestrator coordinates five Claude-backed sub-agents across both workflows:
+
+1. **Intake Agent** — collects requirements via chat, structures a `TrailerBrief`
+2. **Inventory Matching Agent** — scores available rentals against the brief; routes to rental or custom project
+3. **Towability & Compliance Agent** — validates tow vehicle compatibility against trailer size and upgrade weight
+4. **Pricing Recommendation Agent** — estimates rental pricing, upgrade costs, and custom concept package tiers
+5. **Layout Recommendation Agent** — generates a 2D zone layout when no rental match exists (implemented)
+
+### Business model
+
+- Rental only — no ownership, financing, or bespoke one-off builds
+- Three trailer size categories: Small (14–16 ft), Medium (17–20 ft), Large (21–24 ft)
+- Nightly pricing: $129 / $179 / $229 depending on size
+- Custom concept packages: $199 (Basic) / $499 (Advanced) / $999+ (Premium)
 
 ---
 
