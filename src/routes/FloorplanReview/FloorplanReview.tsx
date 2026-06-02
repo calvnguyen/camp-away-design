@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MessageCircle, CheckCircle2, Clock, Send, Download, RotateCcw } from 'lucide-react';
 import { projectRepository } from '../../data';
-import type { Comment, CommentRole, Floorplan, Project } from '../../types';
+import type { Comment, Floorplan, Project } from '../../types';
 import { AppNav } from '../../components/AppNav';
 import { FloorplanUpload } from '../../components/FloorplanUpload';
-import { useProjectRole } from '../../lib/projectRole';
+import { useUser } from '../../lib/supabase/auth-context';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -25,7 +25,10 @@ export function FloorplanReview() {
   const [approving, setApproving] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const { role } = useProjectRole();
+  const { role: authRole } = useUser();
+  const [demoRole, setDemoRole] = useState<'designer' | 'client'>('designer');
+  const isDemo = authRole === 'demo' || authRole === null;
+  const role = isDemo ? demoRole : (authRole === 'admin' ? 'admin' : authRole ?? 'client') as 'designer' | 'client' | 'admin';
 
   useEffect(() => {
     if (!id) return;
@@ -50,8 +53,8 @@ export function FloorplanReview() {
     try {
       await projectRepository.postComment({
         projectId: project.id,
-        author: role === 'designer' ? 'Designer' : 'Client',
-        role: role as CommentRole,
+        author: role === 'designer' ? 'Designer' : role === 'admin' ? 'Admin' : 'Client',
+        role: role === 'admin' ? 'designer' : role,
         body: draft.trim(),
       });
       const refreshed = await projectRepository.getProject(project.id);
@@ -126,6 +129,9 @@ export function FloorplanReview() {
           <ReviewBody
             project={project}
             role={role}
+            isDemo={isDemo}
+            demoRole={demoRole}
+            onDemoRoleChange={setDemoRole}
             draft={draft}
             setDraft={setDraft}
             posting={posting}
@@ -145,7 +151,10 @@ export function FloorplanReview() {
 
 interface ReviewBodyProps {
   project: Project;
-  role: 'designer' | 'client';
+  role: 'designer' | 'client' | 'admin';
+  isDemo: boolean;
+  demoRole: 'designer' | 'client';
+  onDemoRoleChange: (r: 'designer' | 'client') => void;
   draft: string;
   setDraft: (v: string) => void;
   posting: boolean;
@@ -161,6 +170,9 @@ interface ReviewBodyProps {
 function ReviewBody({
   project,
   role,
+  isDemo,
+  demoRole,
+  onDemoRoleChange,
   draft,
   setDraft,
   posting,
@@ -185,9 +197,27 @@ function ReviewBody({
           <h1 className="text-4xl font-bold text-[#1c1a17] mb-2">Floorplan Review</h1>
           <p className="text-[#6b6560] text-lg">{project.clientName}</p>
         </div>
-        <span className="inline-flex items-center self-start px-3 py-1.5 rounded-xl bg-white border border-[#e3e0da] text-sm font-semibold capitalize text-[#6b6560] shadow-sm">
-          {role}
-        </span>
+        {isDemo ? (
+          <div className="flex items-center bg-white border border-[#e3e0da] rounded-xl p-1 gap-1 shadow-sm shrink-0 self-start">
+            {(['designer', 'client'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={demoRole === r}
+                onClick={() => onDemoRoleChange(r)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
+                  demoRole === r ? 'bg-[#1c1a17] text-white shadow-sm' : 'text-[#6b6560] hover:text-[#1c1a17]'
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="inline-flex items-center self-start px-3 py-1.5 rounded-xl bg-white border border-[#e3e0da] text-sm font-semibold capitalize text-[#6b6560] shadow-sm">
+            {role}
+          </span>
+        )}
       </div>
 
       {/* Revision banner — visible to designer when client requested changes */}
@@ -262,7 +292,10 @@ function ReviewBody({
 
             <form onSubmit={onPost} className="border-t border-[#e3e0da] pt-6">
               <label htmlFor="comment-input" className="block text-sm font-semibold text-[#1c1a17] mb-3">
-                Add a comment <span className="text-[#6b6560] font-normal">(as {role})</span>
+                Add a comment{' '}
+              <span className="text-[#6b6560] font-normal">
+                (as {role === 'admin' ? 'admin' : role})
+              </span>
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input

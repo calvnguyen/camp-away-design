@@ -11,7 +11,7 @@ import { ImageWithFallback } from '../../components/ImageWithFallback';
 import { ConceptLayoutSection } from '../../components/ConceptLayoutSection';
 import { OfficialFloorplansSection } from '../../components/OfficialFloorplansSection';
 import { PROJECT_STATUS_BADGE, briefSummary } from '../../lib/projectStatus';
-import { useProjectRole, type ProjectRole } from '../../lib/projectRole';
+import { useUser } from '../../lib/supabase/auth-context';
 
 const BRIEF_LABELS = {
   sizeCategory: { small: 'Small (14–16 ft)', medium: 'Medium (17–20 ft)', large: 'Large (21–24 ft)' },
@@ -147,7 +147,10 @@ function ProjectBody({ project, firm, equivalentBuild, onReload, onProjectChange
   const badge = PROJECT_STATUS_BADGE[project.status];
   const [hero, ...thumbs] = project.galleryUrls;
   const hasFloorplan = project.floorplans.length > 0;
-  const { role, setRole } = useProjectRole();
+  const { role: authRole } = useUser();
+  const [demoRole, setDemoRole] = useState<'designer' | 'client'>('designer');
+  const isDemo = authRole === 'demo' || authRole === null;
+  const role = isDemo ? demoRole : (authRole === 'admin' ? 'admin' : authRole ?? 'client') as 'designer' | 'client' | 'admin';
 
   return (
     <>
@@ -162,28 +165,23 @@ function ProjectBody({ project, firm, equivalentBuild, onReload, onProjectChange
           <p className="text-[#6b6560] text-lg">{briefSummary(project.brief)}</p>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <div
-            role="group"
-            aria-label="View as role"
-            className="flex items-center bg-white border border-[#e3e0da] rounded-xl p-1 gap-1 shadow-sm"
-          >
-            {(['designer', 'client'] as ProjectRole[]).map((r) => (
+        {isDemo && (
+          <div className="flex items-center bg-white border border-[#e3e0da] rounded-xl p-1 gap-1 shadow-sm shrink-0 self-start">
+            {(['designer', 'client'] as const).map((r) => (
               <button
                 key={r}
                 type="button"
-                aria-pressed={role === r}
-                onClick={() => setRole(r)}
+                aria-pressed={demoRole === r}
+                onClick={() => setDemoRole(r)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-                  role === r ? 'bg-[#1c1a17] text-white shadow-sm' : 'text-[#6b6560] hover:text-[#1c1a17]'
+                  demoRole === r ? 'bg-[#1c1a17] text-white shadow-sm' : 'text-[#6b6560] hover:text-[#1c1a17]'
                 }`}
               >
                 {r}
               </button>
             ))}
           </div>
-          <p className="text-xs text-[#6b6560]">MVP demo — replaces auth in production</p>
-        </div>
+        )}
       </div>
 
       {/* Gallery */}

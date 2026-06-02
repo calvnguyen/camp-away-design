@@ -20,7 +20,7 @@ function formatDate(iso: string): string {
 
 interface OfficialFloorplansSectionProps {
   project: Project;
-  role: 'designer' | 'client';
+  role: 'designer' | 'client' | 'admin';
   onProjectChange: (updated: Project) => void;
 }
 
@@ -59,8 +59,8 @@ export function OfficialFloorplansSection({
     try {
       await projectRepository.postComment({
         projectId: project.id,
-        author: role === 'designer' ? 'Designer' : 'Client',
-        role,
+        author: role === 'designer' ? 'Designer' : role === 'admin' ? 'Admin' : 'Client',
+        role: role === 'admin' ? 'designer' : role,
         body: draft.trim(),
       });
       const refreshed = await projectRepository.getProject(project.id);
@@ -235,7 +235,9 @@ export function OfficialFloorplansSection({
         <form onSubmit={postComment} className="border-t border-[#e3e0da] pt-6">
           <label htmlFor="comment-input" className="block text-sm font-semibold text-[#1c1a17] mb-3">
             Add a comment{' '}
-            <span className="text-[#6b6560] font-normal">(as {role})</span>
+            <span className="text-[#6b6560] font-normal">
+              (as {role === 'admin' ? 'admin' : role})
+            </span>
           </label>
           <div className="flex flex-col sm:flex-row gap-3">
             <input

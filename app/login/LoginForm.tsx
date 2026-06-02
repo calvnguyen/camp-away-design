@@ -5,17 +5,24 @@ import { createClient } from '@/lib/supabase/client';
 import { Logo } from '@/components/Logo';
 
 type Mode = 'signin' | 'signup';
-type SignupRole = 'client' | 'designer';
+type DemoRole = 'client' | 'designer';
 
-const ROLE_OPTIONS: { value: SignupRole; label: string; description: string }[] = [
-  { value: 'client', label: 'Client', description: 'Design and track your trailer rental' },
-  {
-    value: 'designer',
-    label: 'Designer / Architect',
-    description: 'Review and deliver floorplan designs',
-  },
-];
-
+const DEMO_CREDENTIALS: Record<DemoRole, { email: string; password: string } | null> = {
+  client:
+    process.env.NEXT_PUBLIC_DEMO_CLIENT_EMAIL && process.env.NEXT_PUBLIC_DEMO_CLIENT_PASSWORD
+      ? {
+          email: process.env.NEXT_PUBLIC_DEMO_CLIENT_EMAIL,
+          password: process.env.NEXT_PUBLIC_DEMO_CLIENT_PASSWORD,
+        }
+      : null,
+  designer:
+    process.env.NEXT_PUBLIC_DEMO_DESIGNER_EMAIL && process.env.NEXT_PUBLIC_DEMO_DESIGNER_PASSWORD
+      ? {
+          email: process.env.NEXT_PUBLIC_DEMO_DESIGNER_EMAIL,
+          password: process.env.NEXT_PUBLIC_DEMO_DESIGNER_PASSWORD,
+        }
+      : null,
+};
 
 export function LoginForm() {
   const supabase = createClient();
@@ -23,14 +30,13 @@ export function LoginForm() {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<SignupRole>('client');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<DemoRole | null>(null);
 
   const emailId = useId();
   const passwordId = useId();
-  const roleGroupId = useId();
   const errorId = useId();
   const infoId = useId();
   const emailRef = useRef<HTMLInputElement>(null);
@@ -45,15 +51,9 @@ export function LoginForm() {
       if (mode === 'signin') {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-        // Hard redirect — middleware checks the profile server-side and routes
-        // admin → /dashboard, others → /
         window.location.href = '/login';
       } else {
-        const { error: err } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { role: signupRole } },
-        });
+        const { error: err } = await supabase.auth.signUp({ email, password });
         if (err) throw err;
         setInfo('Check your email for a confirmation link, then sign in.');
         setMode('signin');
@@ -73,6 +73,23 @@ export function LoginForm() {
     setMode(mode === 'signin' ? 'signup' : 'signin');
     setError(null);
     setInfo(null);
+  }
+
+  async function handleDemoSignIn(demoRole: DemoRole) {
+    const creds = DEMO_CREDENTIALS[demoRole];
+    if (!creds) return;
+    setError(null);
+    setInfo(null);
+    setDemoLoading(demoRole);
+    try {
+      const { error: err } = await supabase.auth.signInWithPassword(creds);
+      if (err) throw err;
+      window.location.href = '/login';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong.';
+      setError(msg);
+      setDemoLoading(null);
+    }
   }
 
   return (
@@ -106,41 +123,43 @@ export function LoginForm() {
           </p>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
-          {mode === 'signup' && (
-            <fieldset className="mb-5">
-              <legend id={roleGroupId} className="block text-sm font-medium text-[#1c1a17] mb-2">
-                What type of account are you creating?
-              </legend>
-              <div className="flex flex-col gap-2" role="radiogroup" aria-labelledby={roleGroupId}>
-                {ROLE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={[
-                      'flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all',
-                      signupRole === opt.value
-                        ? 'border-[#2f6f4f] bg-[#f0f7f3] ring-1 ring-[#2f6f4f]'
-                        : 'border-[#e3e0da] hover:border-[#2f6f4f]/40',
-                    ].join(' ')}
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={opt.value}
-                      checked={signupRole === opt.value}
-                      onChange={() => setSignupRole(opt.value)}
-                      className="mt-0.5 accent-[#2f6f4f] focus:ring-2 focus:ring-[#2f6f4f]"
-                    />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-[#1c1a17]">{opt.label}</span>
-                      <span className="text-xs text-[#6b6560]">{opt.description}</span>
-                    </span>
-                  </label>
-                ))}
+        {mode === 'signin' && (DEMO_CREDENTIALS.client || DEMO_CREDENTIALS.designer) && (
+          <div className="mb-6">
+            <p className="text-xs text-[#6b6560] text-center mb-3">Try a demo account</p>
+            <div className="flex flex-col gap-2">
+              {DEMO_CREDENTIALS.client && (
+                <button
+                  type="button"
+                  onClick={() => handleDemoSignIn('client')}
+                  disabled={demoLoading !== null || submitting}
+                  className="w-full py-2.5 rounded-xl border border-[#e3e0da] bg-[#f7f6f3] text-[#1c1a17] text-sm font-medium hover:bg-[#ebe9e3] transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#2f6f4f] focus:ring-offset-2"
+                >
+                  {demoLoading === 'client' ? 'Signing in…' : 'Continue as Client Demo'}
+                </button>
+              )}
+              {DEMO_CREDENTIALS.designer && (
+                <button
+                  type="button"
+                  onClick={() => handleDemoSignIn('designer')}
+                  disabled={demoLoading !== null || submitting}
+                  className="w-full py-2.5 rounded-xl border border-[#e3e0da] bg-[#f7f6f3] text-[#1c1a17] text-sm font-medium hover:bg-[#ebe9e3] transition-colors disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#2f6f4f] focus:ring-offset-2"
+                >
+                  {demoLoading === 'designer' ? 'Signing in…' : 'Continue as Designer Demo'}
+                </button>
+              )}
+            </div>
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-[#e3e0da]" />
               </div>
-            </fieldset>
-          )}
+              <div className="relative flex justify-center">
+                <span className="bg-white px-3 text-xs text-[#6b6560]">or sign in with your account</span>
+              </div>
+            </div>
+          </div>
+        )}
 
+        <form onSubmit={handleSubmit} noValidate>
           <div className="mb-4">
             <label htmlFor={emailId} className="block text-sm font-medium text-[#1c1a17] mb-1">
               Email

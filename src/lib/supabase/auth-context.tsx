@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from './client';
 
-export type UserRole = 'client' | 'designer' | 'admin';
+export type UserRole = 'demo' | 'client' | 'designer' | 'admin';
 
 interface AuthContextValue {
   user: User | null;
