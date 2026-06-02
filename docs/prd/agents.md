@@ -60,6 +60,8 @@ interface InventoryMatchResult {
 - **No match** — fundamental incompatibility (e.g., sleeps 6 in a small). Route to custom project.
 - Tow vehicle is advisory: if the tow vehicle can't handle the matched size, flag it (Towability Agent handles the deep check).
 
+**Roof-Top Tent compatibility:** If `roof_top_tent` is in the client's upgrade list, the agent checks whether matched inventory supports roof-top tent configurations. If no compatible inventory exists, route to custom project regardless of other field matches.
+
 ### Fallback
 
 Deterministic rule-based matching identical to current `findEquivalentBuild()` in `src/lib/standardBuilds.ts`. Returns `quality: 'exact'` or `quality: 'none'`, no explanation text.
@@ -161,15 +163,17 @@ interface TowabilityResult {
 
 ### Weight Adders (per upgrade)
 
-| Upgrade | Est. Weight Add |
-|---|---|
-| Solar Package | +150 lbs |
-| Off-Grid Battery System | +200 lbs |
-| Roof-Top Tent | +120 lbs |
-| Roof Rack / Outdoor Package | +80 lbs |
-| Premium Interior Finish | +50 lbs |
-| Expanded Storage Package | +30 lbs |
-| Custom Exterior Wrap | +10 lbs |
+| Upgrade | Est. Weight Add | Affects Roof Load |
+|---|---|---|
+| Solar Package | +150 lbs | Yes |
+| Off-Grid Battery System | +200 lbs | No |
+| Roof-Top Tent | +120 lbs | Yes |
+| Roof Rack / Outdoor Package | +80 lbs | Yes |
+| Premium Interior Finish | +50 lbs | No |
+| Expanded Storage Package | +30 lbs | No |
+| Custom Exterior Wrap | +10 lbs | No |
+
+These values come from `RENTAL_UPGRADES[].weightAddLbs` and `affectsRoofLoad` in `src/lib/constraints.ts` — the agent reads them from constants, not hardcoded prompt text.
 
 ### Validation Rules
 
@@ -182,6 +186,8 @@ interface TowabilityResult {
 - `pass` — estimated weight comfortably within vehicle class range
 - `warning` — within range but close to upper limit, or vehicle class is a stretch
 - `fail` — estimated weight exceeds vehicle class capability, or `unsure` + Large trailer
+
+**Roof-Top Tent specifics:** When `roof_top_tent` (or any upgrade with `affectsRoofLoad: true`) is selected, the agent appends a note about increased trailer height and roof load, regardless of overall weight status. Example: *"Selected Roof-Top Tent may increase total trailer height and weight. Review tow vehicle roof load capacity and any height restrictions at your destination."*
 
 ### Fallback
 
@@ -237,6 +243,21 @@ interface PricingRecommendationResult {
   summaryMessage: string;                // plain-language explanation for the client
   disclaimer: string;                    // always: PRICING_DISCLAIMER from constraints.ts
 }
+```
+
+### Admin Override
+
+Admin can replace published estimates with a custom quote. Both values are persisted:
+
+```ts
+interface PricingOverride {
+  estimatedPrice: number;         // agent-calculated published estimate
+  adminOverridePrice: number;     // admin's custom quote
+  adminQuoteNotes: string;        // reason or context for the override
+}
+```
+
+The admin override is set from the Admin Dashboard, not by the agent. The agent always writes `estimatedPrice`; admin writes `adminOverridePrice` and `adminQuoteNotes` separately. The client-facing pricing summary shows `adminOverridePrice` when set, otherwise `estimatedPrice`.
 ```
 
 ### Recommendation Logic
@@ -369,9 +390,21 @@ No agent calls another agent directly. The orchestration happens at the route/re
 
 ---
 
-## Open Questions
+## Resolved Decisions
 
-- Should the Intake Agent be a chat widget or replace the static RequirementForm entirely?
-- How much conversation history does the Intake Agent retain — session only, or persisted to Supabase?
-- Should the Towability Agent block submission on `fail`, or always allow with strong warning?
-- Does the Pricing Agent need admin override capability (e.g., custom quote that differs from published estimates)?
+| Question | Decision |
+|---|---|
+| Intake Agent UX | Chat widget **alongside** the static RequirementForm — does not replace it. The form is the source of truth; the chat helps users fill fields and surface recommendations. |
+| Intake conversation persistence | Persist to Supabase. Session-only is acceptable for temporary draft state, but submitted or meaningfully progressed intake history must be saved for later review and continuation. |
+| Towability fail behavior | **Never hard-block submission** (MVP). On `fail`, show a strong warning and require explicit user acknowledgment before allowing submission. Always allow. |
+| Pricing admin override | Yes. The Pricing Agent exposes published/demo estimates. Admin can override with a custom quote. Both values stored: `estimated_price`, `admin_override_price`, `admin_quote_notes`. |
+
+## Future Enhancements
+
+- Roof-top tent image previews on upgrade selection
+- Compatibility filtering (e.g., hide roof-top tent for trailers without a roof rack)
+- Outdoor package bundling (roof-top tent + roof rack at a combined price)
+- AI upgrade recommendations based on usage intent and destination type
+- Dynamic towability adjustments as upgrades are added/removed in real time
+- Autonomous booking confirmation (agents advise; humans confirm — out of scope for MVP)
+- Multi-agent conversation threads persisted across sessions beyond in-session history

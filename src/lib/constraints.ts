@@ -83,17 +83,71 @@ export const SLEEP_OPTIONS: { value: number; label: string }[] = [
 export interface UpgradeOption {
   id: string;
   label: string;
+  description: string;
   priceUsd: number;
+  /** Est. additional weight in lbs — used by Towability Agent. */
+  weightAddLbs: number;
+  /** True if this upgrade affects roof height or roof load rating. */
+  affectsRoofLoad: boolean;
 }
 
 export const RENTAL_UPGRADES: UpgradeOption[] = [
-  { id: 'solar', label: 'Solar Package', priceUsd: 4_000 },
-  { id: 'battery', label: 'Off-Grid Battery System', priceUsd: 6_000 },
-  { id: 'premium_interior', label: 'Premium Interior Finish', priceUsd: 5_000 },
-  { id: 'storage', label: 'Expanded Storage Package', priceUsd: 2_500 },
-  { id: 'roof_top_tent', label: 'Roof-Top Tent', priceUsd: 2_500 },
-  { id: 'roof_rack', label: 'Roof Rack / Outdoor Package', priceUsd: 1_500 },
-  { id: 'exterior_wrap', label: 'Custom Exterior Wrap', priceUsd: 3_000 },
+  {
+    id: 'solar',
+    label: 'Solar Package',
+    description: 'Roof-mounted solar panels for off-grid power generation.',
+    priceUsd: 4_000,
+    weightAddLbs: 150,
+    affectsRoofLoad: true,
+  },
+  {
+    id: 'battery',
+    label: 'Off-Grid Battery System',
+    description: 'High-capacity lithium battery bank for extended off-grid stays.',
+    priceUsd: 6_000,
+    weightAddLbs: 200,
+    affectsRoofLoad: false,
+  },
+  {
+    id: 'premium_interior',
+    label: 'Premium Interior Finish',
+    description: 'Upgraded cabinetry, countertops, and fixtures throughout.',
+    priceUsd: 5_000,
+    weightAddLbs: 50,
+    affectsRoofLoad: false,
+  },
+  {
+    id: 'storage',
+    label: 'Expanded Storage Package',
+    description: 'Additional under-bed and exterior pass-through storage compartments.',
+    priceUsd: 2_500,
+    weightAddLbs: 30,
+    affectsRoofLoad: false,
+  },
+  {
+    id: 'roof_top_tent',
+    label: 'Roof-Top Tent',
+    description: 'Adds elevated sleeping/storage functionality for outdoor-focused travel setups.',
+    priceUsd: 2_500,
+    weightAddLbs: 120,
+    affectsRoofLoad: true,
+  },
+  {
+    id: 'roof_rack',
+    label: 'Roof Rack / Outdoor Package',
+    description: 'Cargo rack, bike mounts, and tie-down system for outdoor gear.',
+    priceUsd: 1_500,
+    weightAddLbs: 80,
+    affectsRoofLoad: true,
+  },
+  {
+    id: 'exterior_wrap',
+    label: 'Custom Exterior Wrap',
+    description: 'Full custom vinyl wrap in your choice of color or pattern.',
+    priceUsd: 3_000,
+    weightAddLbs: 10,
+    affectsRoofLoad: false,
+  },
 ];
 
 // ─── Concept consultation pricing ────────────────────────────────────────────
