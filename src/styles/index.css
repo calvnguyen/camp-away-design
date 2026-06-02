@@ -74,4 +74,11 @@
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
+
+  button,
+  [role="button"],
+  label[for],
+  summary {
+    cursor: pointer;
+  }
 }
