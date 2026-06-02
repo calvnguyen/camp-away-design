@@ -50,6 +50,28 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
+## Access and demo roles
+
+Authentication uses Supabase Auth. Every user has a `role` stored in the `profiles` table.
+
+| Role | How you get it | Behavior |
+|---|---|---|
+| `demo` | Sign up with any email/password | Default for all new accounts. Sees a **client / designer toggle** on project and review pages for exploration. |
+| `client` | Fixed demo account (`demo-client@campaway.dev`) | No toggle — locked to the client view (intake, booking, approve/request revision). |
+| `designer` | Fixed demo account (`demo-designer@campaway.dev`) | No toggle — locked to the designer view (assigned projects, floorplan upload, revision response). |
+| `admin` | Manual SQL: `UPDATE profiles SET role = 'admin' WHERE id = '<uuid>';` | No toggle — full platform access. Not exposed as a public demo option. |
+
+The login screen shows **Continue as Client Demo** and **Continue as Designer Demo** quick-access buttons when the following env vars are set:
+
+```bash
+NEXT_PUBLIC_DEMO_CLIENT_EMAIL=demo-client@campaway.dev
+NEXT_PUBLIC_DEMO_CLIENT_PASSWORD=...
+NEXT_PUBLIC_DEMO_DESIGNER_EMAIL=demo-designer@campaway.dev
+NEXT_PUBLIC_DEMO_DESIGNER_PASSWORD=...
+```
+
+See `.env.local.example` for the full list of required environment variables.
+
 ## Commands
 
 ```bash
@@ -90,6 +112,6 @@ All design, requirements, and architecture docs live under `docs/`.
 |---|---|
 | [adr-001](docs/decisions/adr-001-redesign-migration.md) | Next.js App Router migration from Vite |
 | [adr-002](docs/decisions/adr-002-concept-layout-generator.md) | Claude API for concept layout generation over third-party services |
-| [adr-003](docs/decisions/adr-003-floorplan-role-toggle.md) | MVP role toggle (designer/client) in place of real auth |
+| [adr-003](docs/decisions/adr-003-floorplan-role-toggle.md) | MVP role toggle (designer/client) in place of real auth — superseded; toggle now shown only for `demo` role users |
 | [adr-004](docs/decisions/adr-004-agent-architecture.md) | Uniform Agent interface — Claude implementation + deterministic fallback |
 | [adr-005](docs/decisions/adr-005-orchestrator.md) | Sequential TypeScript orchestrator over multi-agent frameworks |
