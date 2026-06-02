@@ -8,6 +8,7 @@ import { projectRepository } from '../../data';
 import type { DashboardStats, Firm, Project } from '../../types';
 import { AppNav } from '../../components/AppNav';
 import { PROJECT_STATUS_BADGE } from '../../lib/projectStatus';
+import { useUser } from '../../lib/supabase/auth-context';
 
 function currentVersionLabel(project: Project): string {
   const current = project.floorplans.find((f) => f.status === 'current');
@@ -15,6 +16,7 @@ function currentVersionLabel(project: Project): string {
 }
 
 export function AdminDashboard() {
+  const { role, loading: authLoading } = useUser();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [firms, setFirms] = useState<Firm[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -48,6 +50,20 @@ export function AdminDashboard() {
   async function assignFirm(projectId: string, firmId: string) {
     await projectRepository.assignFirm(projectId, firmId);
     await load();
+  }
+
+  if (authLoading) return null;
+
+  if (role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-[#1c1a17] mb-2">Access denied</p>
+          <p className="text-[#6b6560]">This page is for admins only.</p>
+          <Link href="/" className="mt-4 inline-block text-[#2f6f4f] underline text-sm">Back to home</Link>
+        </div>
+      </div>
+    );
   }
 
   return (
