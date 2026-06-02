@@ -4,11 +4,11 @@
 
 1. Client submits a brief → project status: `intake_submitted`
 2. Admin assigns a firm → status: `under_architect_review`
-3. **Designer uploads a floorplan** (PDF or image) → new version created, status stays `under_architect_review`
+3. **Designer uploads a floorplan** (PDF or image) → new version created, status: `floorplan_uploaded` → `client_review_pending`
 4. Client reviews, comments, and either:
    - **Approves** → status: `approved` — project can go to production
    - **Requests revisions** → status: `revision_requested`
-5. Designer uploads a revised version → loop back to step 4
+5. Designer uploads a revised version → loop back to step 3
 
 ## Roles
 

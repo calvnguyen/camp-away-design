@@ -80,7 +80,7 @@ export function RequirementForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
-      <main className="px-8 pb-8 pt-24 max-w-4xl mx-auto">
+      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-4xl mx-auto">
         <button
           type="button"
           onClick={() => router.push('/')}

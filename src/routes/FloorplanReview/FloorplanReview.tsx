@@ -101,7 +101,7 @@ export function FloorplanReview() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="px-8 pb-8 pt-24 max-w-7xl mx-auto">
+      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-7xl mx-auto">
         <Link
           href={id ? `/project/${id}` : '/'}
           className="inline-flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"

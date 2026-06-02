@@ -16,9 +16,13 @@ export type ProjectStatus =
   | 'awaiting_concept'        // brief submitted, no concept generated yet
   | 'concept_generated'       // concept layout generated, awaiting architect
   | 'under_architect_review'  // assigned firm is designing
+  | 'floorplan_uploaded'      // designer uploaded a floorplan version
+  | 'client_review_pending'   // floorplan ready for client to review
   | 'revision_requested'      // client requested changes to current floorplan
   | 'approved'                // client approved the current floorplan
-  | 'final_design_in_progress'; // production build underway
+  | 'final_design_in_progress' // production build underway
+  | 'completed'               // project fully completed
+  | 'cancelled';              // project cancelled
 
 // --- Brief field enum types ---
 

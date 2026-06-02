@@ -91,6 +91,7 @@ export const RENTAL_UPGRADES: UpgradeOption[] = [
   { id: 'battery', label: 'Off-Grid Battery System', priceUsd: 6_000 },
   { id: 'premium_interior', label: 'Premium Interior Finish', priceUsd: 5_000 },
   { id: 'storage', label: 'Expanded Storage Package', priceUsd: 2_500 },
+  { id: 'roof_top_tent', label: 'Roof-Top Tent', priceUsd: 2_500 },
   { id: 'roof_rack', label: 'Roof Rack / Outdoor Package', priceUsd: 1_500 },
   { id: 'exterior_wrap', label: 'Custom Exterior Wrap', priceUsd: 3_000 },
 ];

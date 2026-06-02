@@ -30,9 +30,13 @@ const STATUS_PROGRESS: Record<Project['status'], number> = {
   awaiting_concept:         25,
   concept_generated:        35,
   under_architect_review:   55,
+  floorplan_uploaded:       65,
+  client_review_pending:    70,
   revision_requested:       65,
   approved:                 90,
-  final_design_in_progress: 100,
+  final_design_in_progress: 95,
+  completed:                100,
+  cancelled:                0,
 };
 
 function formatDate(iso: string): string {
@@ -93,7 +97,7 @@ export function ProjectView() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="px-8 pb-8 pt-24 max-w-6xl mx-auto">
+      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-6xl mx-auto">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"

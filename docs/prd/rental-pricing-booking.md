@@ -81,6 +81,7 @@ These are design consultation estimates only — not full trailer production pri
 | Off-Grid Battery System | +$6,000 |
 | Premium Interior Finish | +$5,000 |
 | Expanded Storage Package | +$2,500 |
+| Roof-Top Tent | +$2,500 |
 | Roof Rack / Outdoor Package | +$1,500 |
 | Custom Exterior Wrap | +$3,000 |
 
@@ -95,10 +96,19 @@ Estimated Build Range: $59,000–$65,000
 Recommended Concept Package: Advanced Concept Package ($499)
 ```
 
+## Inventory-First Matching
+
+Before routing a client to a custom project, the system checks rental inventory first.
+
+If rentals match: *"We found available trailers that match most of your requirements."*
+If no rentals match: *"No available rental fully matches your requirements. You can request a custom concept design."*
+
+See [rentals-workflow.md](rentals-workflow.md) for the full matching flow.
+
 ## UI Requirements
 
 ### Rental Listing Cards (`/trailers`)
-Display: trailer size, sleeps count, tow vehicle recommendation, estimated weight, nightly pricing, "Book Now" button, "Request Custom Concept" CTA.
+Display: trailer image, trailer name, trailer category, sleeps count, tow vehicle recommendation, estimated dry weight, nightly pricing, availability status badge, "Book Now" button, "Request Custom Concept" CTA.
 
 ### Pricing Summary Card (on booking form)
 Display: selected trailer category, selected upgrades, estimated rental total, estimated custom concept pricing, estimated build pricing range, disclaimer.

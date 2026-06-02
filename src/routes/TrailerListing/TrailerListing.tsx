@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, Truck, Weight, ArrowRight, Sparkles } from 'lucide-react';
+import { Users, Truck, Weight, ArrowRight, Sparkles, CheckCircle } from 'lucide-react';
 import { AppNav } from '@/components/AppNav';
 import {
   TRAILER_SIZE_CATEGORIES,
@@ -29,7 +29,7 @@ export function TrailerListing() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="px-6 pb-12 pt-28 max-w-6xl mx-auto">
+      <main className="px-6 pb-12 pt-20 sm:pt-28 max-w-6xl mx-auto">
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-[#1c1a17] mb-3 tracking-tight">
             Rental Trailers
@@ -55,6 +55,10 @@ export function TrailerListing() {
                   />
                   <div className="absolute top-3 right-3 bg-white rounded-xl px-3 py-1.5 shadow text-sm font-bold text-[#2f6f4f]">
                     ${spec.nightlyRateUsd}/night
+                  </div>
+                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-lg px-2.5 py-1 text-xs font-medium text-[#2f6f4f]">
+                    <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Available</span>
                   </div>
                 </div>
 

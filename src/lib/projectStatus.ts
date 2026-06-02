@@ -17,9 +17,13 @@ export const PROJECT_STATUS_BADGE: Record<ProjectStatus, StatusBadgeStyle> = {
   awaiting_concept:         { label: 'Awaiting Concept',         className: 'bg-[#fbf0e2] text-[#b45309]' },
   concept_generated:        { label: 'Concept Generated',        className: 'bg-[#f3e8f0] text-[#9333ea]' },
   under_architect_review:   { label: 'Under Architect Review',   className: 'bg-[#fbf0e2] text-[#b45309]' },
+  floorplan_uploaded:       { label: 'Floorplan Uploaded',       className: 'bg-[#f3e8f0] text-[#9333ea]' },
+  client_review_pending:    { label: 'Client Review Pending',    className: 'bg-[#e7eefb] text-[#2563eb]' },
   revision_requested:       { label: 'Revision Requested',       className: 'bg-[#fde8e8] text-[#b4231d]' },
   approved:                 { label: 'Approved',                 className: 'bg-[#e7f0eb] text-[#2f6f4f]' },
   final_design_in_progress: { label: 'Final Design In Progress', className: 'bg-[#e7f0eb] text-[#2f6f4f]' },
+  completed:                { label: 'Completed',                className: 'bg-[#e7f0eb] text-[#2f6f4f]' },
+  cancelled:                { label: 'Cancelled',                className: 'bg-[#f7f6f3] text-[#6b6560]' },
 };
 
 export const FLOORPLAN_STATUS_LABEL: Record<FloorplanStatus, string> = {

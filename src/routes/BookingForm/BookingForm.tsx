@@ -118,7 +118,7 @@ export function BookingForm() {
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
 
-      <main className="px-6 pb-12 pt-28 max-w-5xl mx-auto">
+      <main className="px-6 pb-12 pt-20 sm:pt-28 max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-[#1c1a17] mb-8 tracking-tight">
           Request a Rental
         </h1>

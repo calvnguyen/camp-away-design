@@ -24,6 +24,19 @@
 
 > Migration in progress. Keep the typed data-layer interface as the seam — swapping in Supabase is a new implementation, not an app-wide rewrite.
 
+## Rentals vs Projects separation
+
+The platform has two distinct workflows that must remain visually and architecturally separate.
+
+| Workflow | Routes | Data | Feel |
+|---|---|---|---|
+| Rentals | `/trailers`, `/book`, `/book/confirmation` | `bookings` table (Supabase) | Inventory marketplace |
+| Projects | `/`, `/new`, `/project/:id`, `/review/:id` | `ProjectRepository` interface | Workflow / collaboration |
+
+- **Rentals** use the `Booking` / `BookingStatus` types and write directly to the `bookings` Supabase table via the Supabase client in route handlers.
+- **Projects** use the `Project` / `ProjectStatus` types and go through `ProjectRepository` (`src/data/`), never touching Supabase directly from components.
+- Navigation (`AppNav`) reflects the separation: "Rentals" and "Projects" are distinct top-level destinations.
+
 ## Project structure
 
 ```
