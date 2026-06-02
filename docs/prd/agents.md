@@ -1,30 +1,185 @@
 # Agent System — PRD
 
-Camp Away Design uses a suite of Claude-backed agents to handle the intelligence-heavy steps in both the Rentals and Projects workflows. Each agent follows the same architectural contract as the existing Layout Recommendation Agent: a typed interface, a Claude implementation, and a deterministic fallback — all living behind the data-layer seam so components never call the API directly.
+Camp Away Design uses a lightweight **Orchestrator** to coordinate five specialized Claude-backed sub-agents across the rental, pricing, inventory, and custom project workflows. The Orchestrator is a backend coordination layer — not itself an AI agent. Sub-agents are the intelligence; the Orchestrator sequences them and routes the result.
 
-**Status:** Layout Recommendation Agent — implemented. All others — planned.
-
----
-
-## Agent Inventory
-
-| Agent | Workflow | Status | Model |
-|---|---|---|---|
-| Inventory Matching Agent | Rentals → Projects gate | Planned | claude-sonnet-4-6 |
-| Intake Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
-| Towability & Compliance Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
-| Pricing Recommendation Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
-| Layout Recommendation Agent | Projects | Implemented | claude-opus-4-8 |
+**Status:** Layout Recommendation Agent — implemented. Orchestrator and all others — planned.
 
 ---
 
-## 1. Inventory Matching Agent
+## Orchestrator
 
-**Purpose:** Given a client's requirements, score available rental inventory and decide whether to route the client to a rental booking or a custom project.
+### What it is
 
-**Trigger:** Client submits requirements (via form or Intake Agent output) before being routed anywhere.
+A TypeScript backend service (`OrchestratorService`) that:
+
+- receives a structured intake or rental request
+- executes sub-agents in sequence
+- passes outputs between agents
+- determines the next workflow step (rental booking vs. custom project)
+- aggregates outputs into a single `OrchestratorResult` for the client
+
+It does **not** call Claude. It calls sub-agents, each of which may call Claude internally.
+
+### API entry point
+
+```
+POST /api/agent/orchestrate-intake
+```
+
+Accepts a structured `OrchestratorInput` and returns an `OrchestratorResult`. All sub-agent calls happen server-side; no AI keys reach the browser.
 
 ### Inputs
+
+```ts
+interface OrchestratorInput {
+  userMessage: string;                    // free text or structured brief
+  conversationHistory: IntakeTurn[];      // prior Intake Agent turns
+  mode: 'rental' | 'project';
+  existingBrief?: Partial<TrailerBrief>;  // pre-filled from static form, if any
+}
+```
+
+### Outputs
+
+```ts
+interface OrchestratorResult {
+  intake: IntakeAgentResult;
+  inventoryMatch: InventoryMatchResult;
+  towability: TowabilityResult;
+  pricing: PricingRecommendationResult;
+  layout?: ConceptLayout;                 // only on custom project path
+  recommendedPath: 'rental' | 'project';
+  nextAction: 'continue_booking' | 'continue_project' | 'needs_more_input';
+}
+```
+
+### Workflow — Inventory-First
+
+```
+Client Intake (chat widget or static form)
+        ↓
+POST /api/agent/orchestrate-intake
+        ↓
+  OrchestratorService
+        │
+        ├─ 1. Intake Agent
+        │      └─ structures TrailerBrief, surfaces follow-up questions
+        │
+        ├─ 2. Inventory Matching Agent
+        │      └─ checks brief against rental inventory
+        │
+        ├─ 3. Towability & Compliance Agent
+        │      └─ validates tow vehicle + weight + roof load
+        │
+        ├─ 4. Pricing Recommendation Agent
+        │      └─ estimates rental or custom build pricing
+        │
+        └─ 5. Layout Recommendation Agent  ← only if no rental match
+               └─ generates 2D concept layout
+        │
+        ↓
+  OrchestratorResult
+        │
+  recommendedPath = 'rental'?
+     YES → Continue Booking Flow  (/book)
+     NO  → Continue Custom Concept Flow  (/new)
+```
+
+No sub-agent calls another sub-agent directly. All sequencing is in `OrchestratorService`.
+
+### Example workflow
+
+**Input:** Sleeps 4 · Roof-Top Tent · Toyota 4Runner · Budget under $50k · Off-grid capable
+
+| Step | Agent | What happens |
+|---|---|---|
+| 1 | Intake Agent | Structures brief: `sizeCategory: medium`, `sleeps: 4`, `powerOptions: [solar, battery]`, `upgradeIds: [roof_top_tent]` |
+| 2 | Inventory Matching Agent | Searches standard builds; roof-top tent + off-grid narrows matches; returns `quality: 'close'` |
+| 3 | Towability & Compliance Agent | Medium trailer + roof-top tent + solar + battery ≈ 5,200 lbs. 4Runner (midsize SUV) is `warning` — near upper limit |
+| 4 | Pricing Recommendation Agent | Medium nightly rate + upgrade costs; if no close rental match, recommends Advanced Concept Package ($499) |
+| 5 | Layout Recommendation Agent | No strong rental match → generates 2D zone layout with off-grid and outdoor focus |
+
+---
+
+## Sub-Agents
+
+### Agent Inventory
+
+| # | Agent | Workflow | Status | Model |
+|---|---|---|---|---|
+| 1 | Intake Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
+| 2 | Inventory Matching Agent | Rentals → Projects gate | Planned | claude-sonnet-4-6 |
+| 3 | Towability & Compliance Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
+| 4 | Pricing Recommendation Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
+| 5 | Layout Recommendation Agent | Projects | Implemented | claude-opus-4-8 |
+
+---
+
+### 1. Intake Agent
+
+**Purpose:** Collect requirements conversationally — accepting free-text or partial input and producing a fully structured `TrailerBrief` with follow-up questions for any gaps.
+
+**UX:** Chat widget alongside the static `RequirementForm`. Does not replace the form. The static form is the source of truth; the chat helps users fill fields and surface recommendations.
+
+#### Inputs
+
+```ts
+interface IntakeAgentInput {
+  userMessage: string;
+  conversationHistory: IntakeTurn[];  // multi-turn support
+  mode: 'rental' | 'project';
+}
+
+interface IntakeTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+```
+
+#### Outputs
+
+```ts
+interface IntakeAgentResult {
+  partialBrief: Partial<TrailerBrief>;
+  followUpQuestions: string[];
+  isComplete: boolean;
+  assistantMessage: string;
+  trailerCategoryRecommendation?: TrailerSizeCategory;
+  requirementSummary?: string;
+}
+```
+
+#### Required fields before `isComplete`
+
+`sizeCategory`, `sleeps`, `bathroomType`, `kitchenType`, `towVehicle`, `intendedUsage`
+
+Optional (filled with defaults): `powerOptions`, `budgetRange`, `designStyle`, `notes`
+
+#### Behavior
+
+- Accepts natural language: *"I need something for 2 people that my Subaru Outback can tow"* → `sleeps: 2`, `towVehicle: 'suv'`, `sizeCategory: 'small'`
+- Never re-asks already-answered fields
+- Soft-validates tow vehicle vs. size during intake and flags issues early
+- On completion, surfaces the structured brief for client confirmation before the Orchestrator proceeds
+
+#### Conversation persistence
+
+- Supabase — submitted and meaningfully progressed intake history must be saved
+- Session-only draft state is acceptable for temporary/incomplete turns
+
+#### Fallback
+
+Falls back to the static `RequirementForm` (`src/routes/RequirementForm/RequirementForm.tsx`). Both produce the same `TrailerBrief` shape.
+
+---
+
+### 2. Inventory Matching Agent
+
+**Purpose:** Score available rental inventory against the client's requirements. Determine whether to route to a rental booking or a custom project.
+
+**Trigger:** Orchestrator calls this after the Intake Agent produces a complete (or partial) brief.
+
+#### Inputs
 
 ```ts
 interface InventoryMatchInput {
@@ -34,134 +189,83 @@ interface InventoryMatchInput {
   kitchenType: KitchenType;
   towVehicle: TowVehicle;
   powerOptions: PowerOption[];
+  upgradeIds: string[];
   intendedUsage: UsageIntent;
   notes: string;
 }
 ```
 
-### Outputs
+#### Outputs
 
 ```ts
 type MatchQuality = 'exact' | 'close' | 'none';
 
 interface InventoryMatchResult {
   quality: MatchQuality;
-  matchedBuildIds: string[];   // references STANDARD_BUILDS[].id
-  explanation: string;         // plain-language summary for the client
-  recommendRental: boolean;    // true → route to /book; false → route to /new
-  suggestedSize?: TrailerSizeCategory;  // if close match requires size adjustment
+  matchedBuildIds: string[];
+  closestCategories: TrailerSizeCategory[];
+  explanation: string;
+  recommendRental: boolean;
+  suggestedSize?: TrailerSizeCategory;
 }
 ```
 
-### Logic
+#### Logic
 
-- **Exact match** — size + sleeps + bathroom + kitchen align with a `STANDARD_BUILD`. Recommend rental.
-- **Close match** — 1–2 fields differ (e.g., slightly larger size, different kitchen tier). Claude explains the delta and whether it's acceptable, still recommends rental if practical.
-- **No match** — fundamental incompatibility (e.g., sleeps 6 in a small). Route to custom project.
-- Tow vehicle is advisory: if the tow vehicle can't handle the matched size, flag it (Towability Agent handles the deep check).
+- **Exact** — size + sleeps + bathroom + kitchen align with a `STANDARD_BUILD`. Recommend rental.
+- **Close** — 1–2 fields differ. Claude explains the delta and whether it's acceptable.
+- **None** — fundamental mismatch. Route to custom project.
+- **Roof-Top Tent:** if `roof_top_tent` is selected, checks whether matched inventory supports it. No compatible inventory → custom project regardless of other match quality.
 
-**Roof-Top Tent compatibility:** If `roof_top_tent` is in the client's upgrade list, the agent checks whether matched inventory supports roof-top tent configurations. If no compatible inventory exists, route to custom project regardless of other field matches.
+#### UI states
 
-### Fallback
+> **Match found:** "We found available trailers that match most of your requirements."
 
-Deterministic rule-based matching identical to current `findEquivalentBuild()` in `src/lib/standardBuilds.ts`. Returns `quality: 'exact'` or `quality: 'none'`, no explanation text.
+> **No match:** "No available rental fully matches your requirements. You can request a custom concept design."
 
-### UI Surface
+#### Fallback
 
-Shown between requirement collection and the booking/project decision. Two outcome states:
-
-> **Match found:** "We found available trailers that match most of your requirements. [view rentals]"
-
-> **No match:** "No available rental fully matches your requirements. You can request a custom concept design. [start project]"
+Exact-match rule lookup using `findEquivalentBuild()` from `src/lib/standardBuilds.ts`. Returns `quality: 'exact'` or `quality: 'none'`, no explanation.
 
 ---
 
-## 2. Intake Agent
+### 3. Towability & Compliance Agent
 
-**Purpose:** Collect requirements conversationally — accepting free-text or partial input and producing a fully structured `TrailerBrief` with follow-up questions for any gaps.
+**Purpose:** Validate the trailer size, estimated weight, and upgrades against the client's tow vehicle. Advisory only — never a structural or road-legal certification.
 
-**Trigger:** Client clicks "Start" on the rental or project entry point without going through the full static form.
+**Trigger:** Orchestrator calls this after Inventory Matching, with the brief + selected upgrades.
 
-### Inputs
+**Fail behavior:** Never hard-blocks submission. `fail` status shows a strong warning and requires explicit user acknowledgment.
 
-```ts
-interface IntakeAgentInput {
-  userMessage: string;                   // free-text from the client
-  conversationHistory: IntakeTurn[];     // prior turns (multi-turn support)
-  mode: 'rental' | 'project';           // shapes which fields are prioritized
-}
-
-interface IntakeTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
-```
-
-### Outputs
-
-```ts
-interface IntakeAgentResult {
-  partialBrief: Partial<TrailerBrief>;   // fields extracted so far
-  followUpQuestions: string[];           // questions for missing required fields
-  isComplete: boolean;                   // true when all required fields are filled
-  assistantMessage: string;             // conversational response to show the client
-}
-```
-
-### Required fields before `isComplete`
-
-`sizeCategory`, `sleeps`, `bathroomType`, `kitchenType`, `towVehicle`, `intendedUsage`
-
-Optional fields (filled with defaults if not provided): `powerOptions`, `budgetRange`, `designStyle`, `notes`
-
-### Behavior
-
-- Accepts natural language: *"I need something for 2 people that my Subaru Outback can tow"* → maps to `sleeps: 2`, `towVehicle: 'suv'`, `sizeCategory: 'small'`
-- Asks targeted follow-ups — never re-asks already-answered fields
-- Soft-validates tow vehicle vs. size during intake and flags issues early
-- On completion, surfaces the structured brief for client confirmation before proceeding
-
-### Fallback
-
-Falls back to the static `RequirementForm` at `src/routes/RequirementForm/RequirementForm.tsx`. The form and agent produce the same `TrailerBrief` shape.
-
----
-
-## 3. Towability & Compliance Agent
-
-**Purpose:** Validate the selected trailer size, estimated weight, and upgrade selections against the client's tow vehicle capabilities. Surface warnings before a booking or project is submitted.
-
-**Trigger:** Any time a trailer size + upgrade combination is finalized (booking form, project brief, or after Inventory Matching).
-
-> **Scope:** This is a practical compatibility check — not a structural engineering certification or road-legal sign-off. Results are advisory, not blocking (except hard fails).
-
-### Inputs
+#### Inputs
 
 ```ts
 interface TowabilityInput {
-  towVehicle: TowVehicle;                  // 'suv' | 'truck' | 'unsure'
-  towVehicleDetail?: string;               // optional: "Subaru Outback 2022"
+  towVehicle: TowVehicle;
+  towVehicleDetail?: string;      // e.g. "Toyota 4Runner 2022"
   sizeCategory: TrailerSizeCategory;
-  upgradeIds: string[];                    // selected upgrades (add weight)
+  upgradeIds: string[];
 }
 ```
 
-### Outputs
+#### Outputs
 
 ```ts
 type ComplianceStatus = 'pass' | 'warning' | 'fail';
 
 interface TowabilityResult {
   status: ComplianceStatus;
-  estimatedWeightLbs: number;       // base weight + upgrade adders
-  towCapacityNote: string;          // e.g. "Midsize SUVs typically tow 3,500–5,000 lbs"
-  issues: string[];                 // specific problems found
-  recommendations: string[];        // suggested fixes (e.g., downsize, remove upgrades)
-  disclaimer: string;               // always appended — not a certified safety check
+  estimatedWeightLbs: number;
+  towCapacityNote: string;
+  issues: string[];
+  recommendations: string[];
+  disclaimer: string;
 }
 ```
 
-### Weight Adders (per upgrade)
+#### Weight adders
+
+Sourced from `RENTAL_UPGRADES[].weightAddLbs` and `affectsRoofLoad` in `src/lib/constraints.ts`.
 
 | Upgrade | Est. Weight Add | Affects Roof Load |
 |---|---|---|
@@ -173,39 +277,33 @@ interface TowabilityResult {
 | Expanded Storage Package | +30 lbs | No |
 | Custom Exterior Wrap | +10 lbs | No |
 
-These values come from `RENTAL_UPGRADES[].weightAddLbs` and `affectsRoofLoad` in `src/lib/constraints.ts` — the agent reads them from constants, not hardcoded prompt text.
-
-### Validation Rules
+#### Validation rules
 
 | Tow Vehicle | Compatible Size | Typical Tow Capacity |
 |---|---|---|
 | Midsize SUV (`suv`) | Small only | 3,500–5,000 lbs |
 | Large SUV / Truck (`truck`) | Small or Medium | 6,000–8,500 lbs |
-| Unsure (`unsure`) | Small only (conservative) | Unknown — assume limited |
+| Unsure (`unsure`) | Small only (conservative) | Unknown |
 
-- `pass` — estimated weight comfortably within vehicle class range
-- `warning` — within range but close to upper limit, or vehicle class is a stretch
-- `fail` — estimated weight exceeds vehicle class capability, or `unsure` + Large trailer
+**Roof load note:** Any upgrade with `affectsRoofLoad: true` appends: *"Selected [upgrade] may increase total trailer height and weight. Review tow vehicle roof load capacity and any height restrictions at your destination."*
 
-**Roof-Top Tent specifics:** When `roof_top_tent` (or any upgrade with `affectsRoofLoad: true`) is selected, the agent appends a note about increased trailer height and roof load, regardless of overall weight status. Example: *"Selected Roof-Top Tent may increase total trailer height and weight. Review tow vehicle roof load capacity and any height restrictions at your destination."*
+#### UI surface
 
-### Fallback
+Inline warning card on BookingForm and RequirementForm. `warning` shows a caution banner. `fail` shows a blocking-style alert with acknowledgment checkbox before submission is enabled.
 
-Static rule table lookup (no AI). Uses weight ranges from `TRAILER_SIZE_CATEGORIES` in `src/lib/constraints.ts` plus the upgrade weight adders above.
+#### Fallback
 
-### UI Surface
-
-Inline warning card on the booking form and project brief. Never blocks submission on `warning`; blocks or strongly discourages on `fail` with override option.
+Static rule table lookup using weight ranges from `TRAILER_SIZE_CATEGORIES` + upgrade weight adders.
 
 ---
 
-## 4. Pricing Recommendation Agent
+### 4. Pricing Recommendation Agent
 
-**Purpose:** Given the client's brief, recommend the right concept package tier, surface the relevant pricing, and explain the estimate in plain language.
+**Purpose:** Estimate rental pricing, recommend the right concept package tier, calculate upgrade costs, and explain the estimate in plain language.
 
-**Trigger:** After the brief is complete (Intake Agent or RequirementForm) and before submission.
+**Trigger:** Orchestrator calls this after Towability, on both rental and custom project paths.
 
-### Inputs
+#### Inputs
 
 ```ts
 interface PricingRecommendationInput {
@@ -219,105 +317,113 @@ interface PricingRecommendationInput {
 }
 ```
 
-### Outputs
+#### Outputs
 
 ```ts
 interface PricingRecommendationResult {
   rentalEstimate: {
     nightlyRateUsd: number;
-    note: string;                        // e.g. "based on Medium trailer"
+    note: string;
   };
   conceptRecommendation: {
-    packageId: string;                   // references CONCEPT_PACKAGES[].id
+    packageId: string;
     packageLabel: string;
     priceUsd: number;
-    rationale: string;                   // why this tier fits the client's needs
-  } | null;                              // null if standard rental, no custom
+    rationale: string;
+  } | null;
   buildEstimate: {
     basePriceUsd: number;
     upgradesTotal: number;
     estimatedRangeMin: number;
     estimatedRangeMax: number;
     selectedUpgrades: { label: string; priceUsd: number }[];
-  } | null;                              // null if rental path
-  summaryMessage: string;                // plain-language explanation for the client
-  disclaimer: string;                    // always: PRICING_DISCLAIMER from constraints.ts
+  } | null;
+  summaryMessage: string;
+  disclaimer: string;   // always PRICING_DISCLAIMER from constraints.ts
 }
 ```
 
-### Admin Override
+#### Admin override
 
 Admin can replace published estimates with a custom quote. Both values are persisted:
 
 ```ts
 interface PricingOverride {
-  estimatedPrice: number;         // agent-calculated published estimate
-  adminOverridePrice: number;     // admin's custom quote
-  adminQuoteNotes: string;        // reason or context for the override
+  estimatedPrice: number;
+  adminOverridePrice: number;
+  adminQuoteNotes: string;
 }
 ```
 
-The admin override is set from the Admin Dashboard, not by the agent. The agent always writes `estimatedPrice`; admin writes `adminOverridePrice` and `adminQuoteNotes` separately. The client-facing pricing summary shows `adminOverridePrice` when set, otherwise `estimatedPrice`.
-```
+Agent always writes `estimatedPrice`. Admin writes `adminOverridePrice` and `adminQuoteNotes` from the Admin Dashboard. Client-facing surfaces show `adminOverridePrice` when set.
 
-### Recommendation Logic
+#### Recommendation logic
 
-- **Rental path:** Surface nightly rate + estimated total for given nights. No concept package.
+- **Rental path:** nightly rate + estimated total. No concept package.
 - **Custom concept path:**
   - `Basic` ($199) — standard brief, no unusual requirements, budget-conscious
-  - `Advanced` ($499) — off-grid power needs, multiple upgrades, specific style preferences
-  - `Premium` ($999+) — full-time living, complex requirements, high budget, luxury finishes
-- Upgrade selections that significantly impact cost (battery + solar combined) are called out explicitly
-- Budget range mismatch (e.g., Large trailer + Premium finishes vs. `under_40k` budget) triggers a plain-language note
+  - `Advanced` ($499) — off-grid power, multiple upgrades, specific style
+  - `Premium` ($999+) — full-time living, complex requirements, high budget
+- Budget range mismatch (e.g., Large + Premium finishes vs. `under_40k`) surfaces a plain-language note.
 
-### Fallback
+#### Fallback
 
-Deterministic calculator using constants from `src/lib/constraints.ts`. No recommendation rationale — just the computed totals. Identical to current BookingForm pricing math.
+Deterministic calculator using constants from `src/lib/constraints.ts`. No rationale — just computed totals. Same math as the current BookingForm.
 
 ---
 
-## 5. Layout Recommendation Agent
+### 5. Layout Recommendation Agent
 
-**Purpose:** Generate a rough 2D concept layout (zone partition) for a trailer brief that has no equivalent standard build.
+**Purpose:** Generate a rough 2D concept layout for a brief that has no equivalent standard build.
+
+**Trigger:** Orchestrator calls this only when `InventoryMatchResult.quality === 'none'` or the client explicitly requests a custom concept.
 
 **Status:** Implemented. See `src/data/conceptLayoutGenerator.ts` and [concept-layout.md](concept-layout.md).
 
-### Current Implementation
+#### Outputs
 
-- `ClaudeConceptLayoutGenerator` — Claude API (`claude-opus-4-8`, adaptive thinking), structured JSON via `output_config.format` json_schema, validates zones against envelope before accepting
+- Concept summary (rationale text)
+- Suggested zone layout (`LayoutZone[]` within the trailer envelope)
+- Storage and sleeping recommendations derived from brief
+
+#### Current implementation
+
+- `ClaudeConceptLayoutGenerator` — `claude-opus-4-8`, adaptive thinking, structured JSON via `output_config.format` json_schema, geometry-validated before accepting
 - `TemplateConceptLayoutGenerator` — deterministic fallback; always works offline and in tests
 - System prompt cached with `cache_control: { type: 'ephemeral' }`
-- Called from `ProjectRepository.generateConceptLayout()`
+- Currently called from `ProjectRepository.generateConceptLayout()`
 
-### Planned Improvements
+#### Planned improvements
 
 | Gap | Target |
 |---|---|
-| Browser-side API call (`dangerouslyAllowBrowser: true`) | Move to Next.js Route Handler — API key server-only |
+| Browser-side API call (`dangerouslyAllowBrowser: true`) | Move to Route Handler via Orchestrator — API key server-only |
 | Single layout output | Return 2–3 layout variants for client to choose from |
-| Style-aware zoning | Use `designStyle` from brief to weight zone positions (e.g., open-plan modern vs. defined-space rustic) |
-| Usage-aware sizing | Full-time living → larger kitchenette; weekend use → maximize sleeping area |
+| Style-aware zoning | Use `designStyle` from brief to influence zone positions |
+| Usage-aware sizing | Full-time living → larger kitchenette; weekend → maximize sleeping |
 
 ---
 
 ## Architecture
 
-All agents share the same structural pattern as the existing Layout Recommendation Agent.
-
 ### File structure
 
 ```
 src/data/agents/
-  types.ts                      # shared agent input/output interfaces
-  inventoryMatchingAgent.ts     # interface + ClaudeInventoryMatchingAgent + RuleBasedFallback
-  intakeAgent.ts                # interface + ClaudeIntakeAgent + StaticFormFallback
-  towabilityAgent.ts            # interface + ClaudeTowabilityAgent + RuleTableFallback
-  pricingAgent.ts               # interface + ClaudePricingAgent + CalculatorFallback
+  orchestrator.ts               # OrchestratorService — sequences agents, routes workflow
+  types.ts                      # shared Agent<TInput, TOutput> interface + all I/O types
+  intakeAgent.ts                # ClaudeIntakeAgent + StaticFormFallback
+  inventoryMatchingAgent.ts     # ClaudeInventoryMatchingAgent + RuleBasedFallback
+  towabilityAgent.ts            # ClaudeTowabilityAgent + RuleTableFallback
+  pricingAgent.ts               # ClaudePricingAgent + CalculatorFallback
   conceptLayoutGenerator.ts     # existing — ClaudeConceptLayoutGenerator + TemplateGenerator
-  index.ts                      # selects implementations based on env (API key present?)
+  index.ts                      # selects implementations based on ANTHROPIC_API_KEY
+
+app/api/agent/
+  orchestrate-intake/route.ts   # POST — receives OrchestratorInput, returns OrchestratorResult
 ```
 
-### Shared contract
+### Shared agent contract
 
 ```ts
 interface Agent<TInput, TOutput> {
@@ -325,68 +431,24 @@ interface Agent<TInput, TOutput> {
 }
 ```
 
-Every agent: typed interface, Claude implementation with graceful fallback, deterministic fallback that works offline and in tests.
+Every sub-agent: typed interface, Claude implementation, deterministic fallback. The fallback is selected automatically when `ANTHROPIC_API_KEY` is absent or when the Claude call fails.
 
-### API call pattern
-
-- **Target:** Next.js Route Handler (`app/api/agents/[agent]/route.ts`) — API key is server-only, never in the browser bundle
-- **Model:** `claude-sonnet-4-6` for Intake, Matching, Towability, Pricing. `claude-opus-4-8` for Layout (existing, needs spatial reasoning)
-- **Output format:** `output_config.format: json_schema` for all structured outputs
-- **Caching:** system prompt cached with `cache_control: { type: 'ephemeral' }` on all agents
-- **Fallback:** every agent catches errors and returns the deterministic result rather than surfacing an AI failure to the user
-
-### Selection in `src/data/agents/index.ts`
+### Implementation selection (`src/data/agents/index.ts`)
 
 ```ts
-// Claude implementations when ANTHROPIC_API_KEY is set (server); 
-// fallbacks when key is absent (tests, local dev without key).
-export const inventoryMatchingAgent = process.env.ANTHROPIC_API_KEY
-  ? new ClaudeInventoryMatchingAgent(process.env.ANTHROPIC_API_KEY)
-  : new RuleBasedInventoryMatchingAgent();
-// ... same pattern for each
+export const intakeAgent = process.env.ANTHROPIC_API_KEY
+  ? new ClaudeIntakeAgent(process.env.ANTHROPIC_API_KEY)
+  : new StaticFormFallbackIntakeAgent();
+// same pattern for each agent
 ```
 
----
+### API call pattern (all agents)
 
-## Agent Orchestration
-
-The agents compose in sequence across the user journey:
-
-```
-[Intake Agent]
-  → collects TrailerBrief from free text or form
-
-[Towability & Compliance Agent]
-  → validates tow vehicle vs. size + upgrades
-  → surfaces warnings before submission
-
-[Inventory Matching Agent]
-  → checks brief against rental inventory
-  → routes: rental booking OR custom project
-
-  ─ Rental path ─────────────────────────────
-  [Pricing Recommendation Agent]
-    → surfaces nightly rate, upgrade costs
-
-  ─ Custom project path ──────────────────────
-  [Pricing Recommendation Agent]
-    → recommends concept package tier, build estimate
-
-  [Layout Recommendation Agent]
-    → generates 2D zone layout when no standard build matches
-```
-
-No agent calls another agent directly. The orchestration happens at the route/repository layer.
-
----
-
-## Out of Scope
-
-- Multi-agent conversation threads persisted across sessions (beyond the Intake Agent's in-session history)
-- Autonomous booking confirmation (agents advise; humans confirm)
-- Builder assignment or construction scheduling automation
-- Real tow-safety certification or regulatory compliance sign-off
-- Payment or deposit processing
+- **Route:** Next.js Route Handler — API key is server-only, never in the browser bundle
+- **Model:** `claude-sonnet-4-6` for Intake, Matching, Towability, Pricing; `claude-opus-4-8` for Layout
+- **Output format:** `output_config.format: json_schema` for all structured outputs
+- **Caching:** system prompt cached with `cache_control: { type: 'ephemeral' }`
+- **Fallback:** every agent catches errors and returns the deterministic result — AI failures are never surfaced to the user
 
 ---
 
@@ -394,17 +456,35 @@ No agent calls another agent directly. The orchestration happens at the route/re
 
 | Question | Decision |
 |---|---|
-| Intake Agent UX | Chat widget **alongside** the static RequirementForm — does not replace it. The form is the source of truth; the chat helps users fill fields and surface recommendations. |
-| Intake conversation persistence | Persist to Supabase. Session-only is acceptable for temporary draft state, but submitted or meaningfully progressed intake history must be saved for later review and continuation. |
-| Towability fail behavior | **Never hard-block submission** (MVP). On `fail`, show a strong warning and require explicit user acknowledgment before allowing submission. Always allow. |
-| Pricing admin override | Yes. The Pricing Agent exposes published/demo estimates. Admin can override with a custom quote. Both values stored: `estimated_price`, `admin_override_price`, `admin_quote_notes`. |
+| Intake Agent UX | Chat widget alongside the static RequirementForm — does not replace it. The form is the source of truth; the chat helps users fill fields and surface recommendations. |
+| Intake conversation persistence | Persist to Supabase. Session-only acceptable for draft state; submitted or meaningfully progressed history must be saved. |
+| Towability fail behavior | Never hard-block submission (MVP). `fail` shows a strong warning with required acknowledgment before submission is enabled. |
+| Pricing admin override | Yes. Agent writes `estimatedPrice`; admin writes `adminOverridePrice` + `adminQuoteNotes` from Admin Dashboard. |
+| Orchestrator implementation | Lightweight sequential TypeScript service — no advanced multi-agent infrastructure for MVP. |
+
+---
+
+## Out of Scope (MVP)
+
+- Async / parallel agent execution
+- Agent memory or context sharing across agent boundaries
+- Autonomous booking confirmation (agents advise; humans confirm)
+- Builder assignment or construction scheduling automation
+- Real tow-safety certification or regulatory compliance sign-off
+- Payment or deposit processing
+
+---
 
 ## Future Enhancements
 
+- Async agent execution and parallel sub-agent runs
+- Agent memory and context sharing across workflow steps
+- Recommendation scoring and ranking
+- Workflow analytics (which agents triggered, match rates, override frequency)
+- Streaming agent responses to the client
+- AI-generated SVG floorplans
+- Advanced inventory ranking (beyond exact/close/none)
+- Autonomous designer-assistant workflows
 - Roof-top tent image previews on upgrade selection
-- Compatibility filtering (e.g., hide roof-top tent for trailers without a roof rack)
 - Outdoor package bundling (roof-top tent + roof rack at a combined price)
-- AI upgrade recommendations based on usage intent and destination type
 - Dynamic towability adjustments as upgrades are added/removed in real time
-- Autonomous booking confirmation (agents advise; humans confirm — out of scope for MVP)
-- Multi-agent conversation threads persisted across sessions beyond in-session history
