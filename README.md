@@ -98,7 +98,18 @@ All design, requirements, and architecture docs live under `docs/`.
 | [rental-pricing-booking.md](docs/prd/rental-pricing-booking.md) | Pricing tables, booking form fields, inventory-first matching, UI requirements |
 | [floorplan-review.md](docs/prd/floorplan-review.md) | Floorplan upload flow, review roles, file formats, version history |
 | [concept-layout.md](docs/prd/concept-layout.md) | AI concept layout generation — match logic, generator implementations, UI components |
-| [agents.md](docs/prd/agents.md) | Agent system — Orchestrator architecture, all 5 sub-agents, inputs/outputs, workflow |
+
+### Agent system (`docs/prd/agents/`)
+
+Each file follows the agent doc format: YAML frontmatter (`name`, `description`, `model`, `tools`, `memory`) + system-prompt instructions + technical spec.
+
+| File | What's in it |
+|---|---|
+| [index.md](docs/prd/agents/index.md) | Orchestrator architecture, agent inventory, workflow sequence, file structure |
+| [intake.md](docs/prd/agents/intake.md) | Intake Agent — collects requirements via chat, produces `TrailerBrief` |
+| [inventory-matching.md](docs/prd/agents/inventory-matching.md) | Inventory Matching Agent — scores brief against rental inventory, routes rental vs. project |
+| [towability.md](docs/prd/agents/towability.md) | Towability & Compliance Agent — validates tow vehicle vs. trailer weight and upgrades |
+| [pricing.md](docs/prd/agents/pricing.md) | Pricing Recommendation Agent — estimates nightly rate, build cost, concept package tier |
 
 ### Architecture (`docs/architecture/`)
 
@@ -115,3 +126,25 @@ All design, requirements, and architecture docs live under `docs/`.
 | [adr-003](docs/decisions/adr-003-floorplan-role-toggle.md) | MVP role toggle (designer/client) in place of real auth — superseded; toggle now shown only for `demo` role users |
 | [adr-004](docs/decisions/adr-004-agent-architecture.md) | Uniform Agent interface — Claude implementation + deterministic fallback |
 | [adr-005](docs/decisions/adr-005-orchestrator.md) | Sequential TypeScript orchestrator over multi-agent frameworks |
+
+## Folder structure (key paths)
+
+```
+app/
+  api/agent/
+    intake/route.ts          # POST /api/agent/intake
+    orchestrate-intake/      # POST /api/agent/orchestrate-intake (planned)
+
+src/
+  data/agents/
+    types.ts                 # Agent<TInput, TOutput> base contract
+    intakeAgent.ts           # I/O types + StaticFormFallbackIntakeAgent
+    inventoryMatchingAgent.ts# I/O types + RuleBasedInventoryMatchingAgent
+    towabilityAgent.ts       # I/O types + RuleTableTowabilityAgent
+    pricingAgent.ts          # I/O types + CalculatorFallbackPricingAgent
+    index.ts                 # exports all agent instances
+  components/IntakeChat/     # chat widget used on /new
+  routes/NewProject/         # two-column /new page: RequirementForm + IntakeChat
+
+docs/prd/agents/             # per-agent specs (frontmatter + system prompt + I/O types)
+```
