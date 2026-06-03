@@ -83,6 +83,52 @@ Whenever new requirements, workflows, or business logic are introduced, update t
 | New workflow state or transition | relevant workflow doc |
 | New AI behavior | `docs/prd/ai-concept-generation.md` (or equivalent) |
 | New role behavior | relevant review/workflow doc |
+| New agent or agent behavior change | `docs/prd/agents/<agent>.md` + `docs/prd/agents/index.md` |
+
+## Agent doc format
+
+Every file under `docs/prd/agents/` (except `index.md`) must start with YAML frontmatter followed by the agent's system-prompt instructions, then supporting technical spec.
+
+```markdown
+---
+name: kebab-case-agent-name
+description: One-sentence description of what this agent does and when it is called.
+  Wrap at ~80 chars. Include the trigger condition (e.g. "Called by the Orchestrator
+  after the Intake Agent produces a complete brief.").
+model: claude-sonnet-4-6
+tools:
+  - lookup_function_name   # data lookups or functions the Claude impl would call
+memory: supabase/table_name  # omit if agent is stateless
+---
+
+You are the Camp Away [agent role]. [System-prompt instructions — written as if sent to Claude.]
+
+**Return format:**
+[JSON example of the output shape]
+
+---
+
+## Workflow
+[Where this agent sits in the Orchestrator sequence]
+
+## Files
+[Implementation files]
+
+## Status
+[Fallback implemented / Claude implementation planned]
+
+---
+
+## Inputs / Outputs
+[TypeScript interfaces]
+```
+
+Fields:
+- `name` — kebab-case, matches the class name pattern (e.g. `intake-agent`)
+- `description` — used by the Orchestrator and future tooling to decide which agent to invoke; be specific about trigger conditions
+- `model` — `claude-sonnet-4-6` for all agents except the Layout Agent (`claude-opus-4-8`)
+- `tools` — data-lookup functions the Claude implementation would call; use snake_case verbs
+- `memory` — Supabase table or path where agent state persists; omit for stateless agents
 
 ## Architecture review rules
 
