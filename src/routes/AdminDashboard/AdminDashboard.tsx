@@ -15,12 +15,18 @@ function currentVersionLabel(project: Project): string {
   return current ? `v${current.version}` : '—';
 }
 
+const DEMO_TOGGLE_ID = 'demo-admin-toggle';
+
 export function AdminDashboard() {
   const { role, loading: authLoading } = useUser();
+  const [demoAdminOn, setDemoAdminOn] = useState(true);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [firms, setFirms] = useState<Firm[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const isDemo = role === 'demo';
+  const isAdmin = role === 'admin' || (isDemo && demoAdminOn);
 
   const load = useCallback(async () => {
     setError(null);
@@ -34,7 +40,7 @@ export function AdminDashboard() {
       setFirms(f);
       setStats(s);
     } catch {
-      setError('We couldn’t load the dashboard. Please try again.');
+      setError("We couldn't load the dashboard. Please try again.");
     }
   }, []);
 
@@ -54,14 +60,37 @@ export function AdminDashboard() {
 
   if (authLoading) return null;
 
-  if (role !== 'admin') {
+  const demoBanner = isDemo && (
+    <div className="bg-[#1c1a17] text-white px-6 py-3 flex items-center justify-center gap-3 text-sm rounded-2xl mb-8">
+      <span className="font-semibold text-[#f5c842]">Demo</span>
+      <span className="text-white/40">·</span>
+      <label htmlFor={DEMO_TOGGLE_ID} className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          id={DEMO_TOGGLE_ID}
+          type="checkbox"
+          checked={demoAdminOn}
+          onChange={(e) => setDemoAdminOn(e.target.checked)}
+          className="w-4 h-4 accent-[#2f6f4f] cursor-pointer"
+        />
+        Admin mode — toggle to see role-based access in action
+      </label>
+    </div>
+  );
+
+  if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-2xl font-bold text-[#1c1a17] mb-2">Access denied</p>
-          <p className="text-[#6b6560]">This page is for admins only.</p>
-          <Link href="/" className="mt-4 inline-block text-[#2f6f4f] underline text-sm">Back to home</Link>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
+        <AppNav />
+        <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-7xl mx-auto">
+          {demoBanner}
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-[#1c1a17] mb-2">Access denied</p>
+              <p className="text-[#6b6560]">This page is for admins only.</p>
+              <Link href="/" className="mt-4 inline-block text-[#2f6f4f] underline text-sm">Back to home</Link>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -75,6 +104,8 @@ export function AdminDashboard() {
           <h1 className="text-5xl font-bold text-[#1c1a17] mb-3 tracking-tight">Admin Dashboard</h1>
           <p className="text-[#6b6560] text-lg">All projects, firms, and platform metrics.</p>
         </div>
+
+        {demoBanner}
 
         {error && (
           <p role="alert" className="text-[#b4231d] font-medium mb-6">
