@@ -62,7 +62,6 @@ export function RequirementForm({ externalSuggestion, standalone = true }: Requi
     if (externalSuggestion.designStyle) setDesignStyle(externalSuggestion.designStyle);
     if (externalSuggestion.powerOptions) setPowerOptions(externalSuggestion.powerOptions);
     if (externalSuggestion.notes) setNotes(externalSuggestion.notes);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalSuggestion]);
 
   function togglePowerOption(opt: PowerOption) {

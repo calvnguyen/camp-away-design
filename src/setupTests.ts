@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import React from 'react';
 import { afterEach, vi } from 'vitest';
 
 // Mock next/navigation globally so components using usePathname/useRouter/useParams
@@ -13,7 +14,6 @@ vi.mock('next/navigation', () => ({
 // Mock next/link so <Link href="..."> renders as a plain <a> in tests.
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => {
-    const React = require('react') as typeof import('react');
     return React.createElement('a', { href, ...props }, children);
   },
 }));

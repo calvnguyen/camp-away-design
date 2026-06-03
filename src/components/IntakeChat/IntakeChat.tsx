@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { SendHorizonal } from 'lucide-react';
 import type { TrailerBrief } from '../../types';
-import type { IntakeTurn, IntakeAgentResult } from '../../data/agents/types';
+import type { IntakeTurn, IntakeAgentResult } from '../../data/agents/intakeAgent';
 
 interface Message {
   role: 'user' | 'assistant';

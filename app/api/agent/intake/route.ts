@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { intakeAgent } from '@/data/agents';
-import type { IntakeAgentInput } from '@/data/agents/types';
+import type { IntakeAgentInput } from '@/data/agents/intakeAgent';
 
 export async function POST(req: NextRequest) {
   let body: IntakeAgentInput;

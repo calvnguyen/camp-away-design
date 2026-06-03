@@ -9,7 +9,29 @@ import type {
   TowVehicle,
   UsageIntent,
 } from '../../types';
-import type { Agent, IntakeAgentInput, IntakeAgentResult } from './types';
+import type { Agent } from './types';
+
+// ─── I/O types ────────────────────────────────────────────────────────────────
+
+export interface IntakeTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface IntakeAgentInput {
+  userMessage: string;
+  conversationHistory: IntakeTurn[];
+  mode: 'rental' | 'project';
+}
+
+export interface IntakeAgentResult {
+  partialBrief: Partial<TrailerBrief>;
+  followUpQuestions: string[];
+  isComplete: boolean;
+  assistantMessage: string;
+  trailerCategoryRecommendation?: TrailerSizeCategory;
+  requirementSummary?: string;
+}
 
 // ─── Field extraction ─────────────────────────────────────────────────────────
 
