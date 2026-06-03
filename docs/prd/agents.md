@@ -107,7 +107,7 @@ No sub-agent calls another sub-agent directly. All sequencing is in `Orchestrato
 
 | # | Agent | Workflow | Status | Model |
 |---|---|---|---|---|
-| 1 | Intake Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
+| 1 | Intake Agent | Rentals + Projects | Implemented (fallback) | claude-sonnet-4-6 |
 | 2 | Inventory Matching Agent | Rentals → Projects gate | Planned | claude-sonnet-4-6 |
 | 3 | Towability & Compliance Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
 | 4 | Pricing Recommendation Agent | Rentals + Projects | Planned | claude-sonnet-4-6 |
@@ -118,6 +118,8 @@ No sub-agent calls another sub-agent directly. All sequencing is in `Orchestrato
 ### 1. Intake Agent
 
 **Purpose:** Collect requirements conversationally — accepting free-text or partial input and producing a fully structured `TrailerBrief` with follow-up questions for any gaps.
+
+**Status:** Fallback implementation live. `StaticFormFallbackIntakeAgent` does keyword extraction and asks follow-up questions for missing required fields. `IntakeChat` widget is on `/new` alongside the `RequirementForm`. Claude implementation slots in via `ANTHROPIC_API_KEY` in `src/data/agents/index.ts`.
 
 **UX:** Chat widget alongside the static `RequirementForm`. Does not replace the form. The static form is the source of truth; the chat helps users fill fields and surface recommendations.
 
@@ -410,17 +412,24 @@ Deterministic calculator using constants from `src/lib/constraints.ts`. No ratio
 
 ```
 src/data/agents/
-  orchestrator.ts               # OrchestratorService — sequences agents, routes workflow
-  types.ts                      # shared Agent<TInput, TOutput> interface + all I/O types
-  intakeAgent.ts                # ClaudeIntakeAgent + StaticFormFallback
-  inventoryMatchingAgent.ts     # ClaudeInventoryMatchingAgent + RuleBasedFallback
-  towabilityAgent.ts            # ClaudeTowabilityAgent + RuleTableFallback
-  pricingAgent.ts               # ClaudePricingAgent + CalculatorFallback
-  conceptLayoutGenerator.ts     # existing — ClaudeConceptLayoutGenerator + TemplateGenerator
-  index.ts                      # selects implementations based on ANTHROPIC_API_KEY
+  orchestrator.ts               # OrchestratorService — sequences agents, routes workflow (planned)
+  types.ts                      # shared Agent<TInput, TOutput> interface + all I/O types ✓
+  intakeAgent.ts                # StaticFormFallbackIntakeAgent ✓ · ClaudeIntakeAgent (planned)
+  inventoryMatchingAgent.ts     # ClaudeInventoryMatchingAgent + RuleBasedFallback (planned)
+  towabilityAgent.ts            # ClaudeTowabilityAgent + RuleTableFallback (planned)
+  pricingAgent.ts               # ClaudePricingAgent + CalculatorFallback (planned)
+  conceptLayoutGenerator.ts     # ClaudeConceptLayoutGenerator + TemplateGenerator ✓
+  index.ts                      # selects implementations based on ANTHROPIC_API_KEY ✓
+
+src/components/IntakeChat/
+  IntakeChat.tsx                # chat widget on /new — calls POST /api/agent/intake ✓
+
+src/routes/NewProject/
+  NewProjectLayout.tsx          # two-column /new page: RequirementForm + IntakeChat ✓
 
 app/api/agent/
-  orchestrate-intake/route.ts   # POST — receives OrchestratorInput, returns OrchestratorResult
+  intake/route.ts               # POST — receives IntakeAgentInput, returns IntakeAgentResult ✓
+  orchestrate-intake/route.ts   # POST — receives OrchestratorInput, returns OrchestratorResult (planned)
 ```
 
 ### Shared agent contract
