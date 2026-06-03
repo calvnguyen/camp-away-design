@@ -1,5 +1,5 @@
-import { RequirementForm } from '@/routes/RequirementForm/RequirementForm';
+import { NewProjectLayout } from '@/routes/NewProject/NewProjectLayout';
 
 export default function Page() {
-  return <RequirementForm />;
+  return <NewProjectLayout />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check } from 'lucide-react';
@@ -21,7 +21,17 @@ import type {
 type FieldName = 'clientName' | 'sizeCategory' | 'sleeps' | 'bathroomType' | 'kitchenType' | 'budgetRange' | 'designStyle' | 'intendedUsage' | 'towVehicle';
 type Errors = Partial<Record<FieldName, string>>;
 
-export function RequirementForm() {
+interface RequirementFormProps {
+  /** Partial brief values suggested by the intake chat agent — applied to form fields. */
+  externalSuggestion?: Partial<import('../../types').TrailerBrief>;
+  /**
+   * When false, renders only the back button + heading + form card — no AppNav or page wrapper.
+   * Defaults to true for standalone use.
+   */
+  standalone?: boolean;
+}
+
+export function RequirementForm({ externalSuggestion, standalone = true }: RequirementFormProps = {}) {
   const router = useRouter();
 
   const [clientName, setClientName] = useState('');
@@ -39,6 +49,21 @@ export function RequirementForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!externalSuggestion) return;
+    if (externalSuggestion.sizeCategory) setSizeCategory(externalSuggestion.sizeCategory);
+    if (externalSuggestion.sleeps) setSleeps(externalSuggestion.sleeps);
+    if (externalSuggestion.bathroomType) setBathroomType(externalSuggestion.bathroomType);
+    if (externalSuggestion.kitchenType) setKitchenType(externalSuggestion.kitchenType);
+    if (externalSuggestion.intendedUsage) setIntendedUsage(externalSuggestion.intendedUsage);
+    if (externalSuggestion.towVehicle) setTowVehicle(externalSuggestion.towVehicle);
+    if (externalSuggestion.budgetRange) setBudgetRange(externalSuggestion.budgetRange);
+    if (externalSuggestion.designStyle) setDesignStyle(externalSuggestion.designStyle);
+    if (externalSuggestion.powerOptions) setPowerOptions(externalSuggestion.powerOptions);
+    if (externalSuggestion.notes) setNotes(externalSuggestion.notes);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalSuggestion]);
 
   function togglePowerOption(opt: PowerOption) {
     setPowerOptions((prev) =>
@@ -77,27 +102,25 @@ export function RequirementForm() {
 
   const sizeSpec = TRAILER_SIZE_CATEGORIES[sizeCategory];
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
-      <AppNav />
-      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-4xl mx-auto">
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          className="flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-          <span className="text-sm font-medium">Back to Projects</span>
-        </button>
+  const inner = (
+    <>
+      <button
+        type="button"
+        onClick={() => router.push('/')}
+        className="flex items-center gap-2 text-[#6b6560] hover:text-[#1c1a17] mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+        <span className="text-sm font-medium">Back to Projects</span>
+      </button>
 
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold text-[#1c1a17] mb-3">New Trailer Brief</h1>
-          <p className="text-[#6b6560] text-lg">
-            Tell us about the trailer you have in mind — size, features, and style.
-          </p>
-        </div>
+      <div className="mb-10">
+        <h1 className="text-4xl font-bold text-[#1c1a17] mb-3">New Trailer Brief</h1>
+        <p className="text-[#6b6560] text-lg">
+          Tell us about the trailer you have in mind — size, features, and style.
+        </p>
+      </div>
 
-        <form
+      <form
           noValidate
           onSubmit={(e) => { e.preventDefault(); void save(true); }}
           className="bg-white rounded-3xl border border-[#e3e0da] p-8 shadow-lg space-y-8"
@@ -260,7 +283,17 @@ export function RequirementForm() {
               Save Draft
             </button>
           </div>
-        </form>
+      </form>
+    </>
+  );
+
+  if (!standalone) return inner;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
+      <AppNav />
+      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-4xl mx-auto">
+        {inner}
       </main>
     </div>
   );
