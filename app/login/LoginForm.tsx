@@ -161,7 +161,7 @@ export function LoginForm() {
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="mb-4">
-            <label htmlFor={emailId} className="block text-sm font-medium text-[#1c1a17] mb-1">
+            <label htmlFor={emailId} className="block text-sm font-medium text-[#1c1a17] mb-1.5">
               Email
             </label>
             <input
@@ -180,7 +180,7 @@ export function LoginForm() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor={passwordId} className="block text-sm font-medium text-[#1c1a17] mb-1">
+            <label htmlFor={passwordId} className="block text-sm font-medium text-[#1c1a17] mb-1.5">
               Password
             </label>
             <input

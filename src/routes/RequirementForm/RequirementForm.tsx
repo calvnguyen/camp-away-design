@@ -122,7 +122,7 @@ export function RequirementForm({ externalSuggestion, standalone = true }: Requi
       <form
           noValidate
           onSubmit={(e) => { e.preventDefault(); void save(true); }}
-          className="bg-white rounded-3xl border border-[#e3e0da] p-8 shadow-lg space-y-8"
+          className="bg-white rounded-3xl border border-[#e3e0da] p-5 sm:p-8 shadow-lg space-y-8"
         >
           {/* Client name */}
           <div>
@@ -264,7 +264,7 @@ export function RequirementForm({ externalSuggestion, standalone = true }: Requi
             </p>
           )}
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
             <button
               type="submit"
               disabled={submitting}
@@ -291,7 +291,7 @@ export function RequirementForm({ externalSuggestion, standalone = true }: Requi
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f7f6f3] to-[#ebe9e3]">
       <AppNav />
-      <main className="px-8 pb-8 pt-20 sm:pt-24 max-w-4xl mx-auto">
+      <main className="px-4 sm:px-8 pb-8 pt-20 sm:pt-24 max-w-4xl mx-auto">
         {inner}
       </main>
     </div>
